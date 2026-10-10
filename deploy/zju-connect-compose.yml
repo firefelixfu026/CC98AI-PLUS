@@ -1,0 +1,10 @@
+services:
+  zju-connect:
+    image: mythologyli/zju-connect
+    container_name: cc98aiplus-zju-connect
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1280:1080"
+      - "127.0.0.1:1281:1081"
+    volumes:
+      - ./zju-connect.toml:/home/nonroot/config.toml:ro

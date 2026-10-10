@@ -64,25 +64,37 @@ curl -I https://openid.cc98.org
 
 如果直连可用，不需要额外配置 RVPN；如果超时，再根据实际 RVPN 客户端或路由方式配置服务器网络。
 
-For the Zhejiang University EasyConnect endpoint, create a private configuration file:
+The legacy EasyConnect client can log in successfully while still missing the
+CC98 domain routes. ZJU Connect supports explicit domain routing and is the
+recommended server-side proxy for this project.
+
+Create its private configuration file:
 
 ```bash
-cp deploy/easyconnect.env.example deploy/easyconnect.env
-chmod 600 deploy/easyconnect.env
+cp deploy/zju-connect.toml.example deploy/zju-connect.toml
+chmod 600 deploy/zju-connect.toml
 ```
 
-Fill in the ZJU network account locally on the server, then start the proxy:
+Fill in the ZJU network account locally on the server. Do not use a CC98
+account and do not commit this file. Then start the proxy:
 
 ```bash
-docker compose --env-file deploy/easyconnect.env -f deploy/easyconnect-compose.yml up -d
+docker compose -f deploy/zju-connect-compose.yml up -d
 ```
 
-The container exposes HTTP proxy `127.0.0.1:8888` and SOCKS5 proxy
-`127.0.0.1:1080`. After login succeeds, set the backend environment to:
+The container exposes HTTP proxy `127.0.0.1:1281` and SOCKS5 proxy
+`127.0.0.1:1280`. Verify CC98 connectivity before enabling the scheduler:
+
+```bash
+curl -x http://127.0.0.1:1281 -I https://api.cc98.org
+curl -x http://127.0.0.1:1281 -I https://openid.cc98.org
+```
+
+After both domains respond, set the backend environment to:
 
 ```env
-HTTP_PROXY=http://127.0.0.1:8888
-HTTPS_PROXY=http://127.0.0.1:8888
+HTTP_PROXY=http://127.0.0.1:1281
+HTTPS_PROXY=http://127.0.0.1:1281
 NO_PROXY=127.0.0.1,localhost
 CC98_TRUST_ENV=true
 ENABLE_SCHEDULER=true

@@ -12,5 +12,7 @@ node_modules/
 dist/
 build/
 deploy/easyconnect.env
+deploy/zju-connect.env
+deploy/zju-connect.toml
 .DS_Store
 

@@ -1,0 +1,28 @@
+protocol = "easyconnect"
+server_address = "rvpn.zju.edu.cn"
+server_port = 443
+
+username = ""
+password = ""
+
+socks_bind = ":1080"
+http_bind = ":1081"
+remote_dns_server = "auto"
+
+disable_server_config = false
+skip_domain_resource = false
+proxy_all = false
+
+custom_proxy_domain = [
+  "cc98.org",
+  "www.cc98.org",
+  "api.cc98.org",
+  "openid.cc98.org",
+]
+
+custom_dns = [
+  { host_name = "cc98.org", ip = "10.10.98.98" },
+  { host_name = "www.cc98.org", ip = "10.10.98.98" },
+  { host_name = "api.cc98.org", ip = "10.10.98.98" },
+  { host_name = "openid.cc98.org", ip = "10.10.98.98" },
+]
