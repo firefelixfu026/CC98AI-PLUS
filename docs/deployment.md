@@ -27,6 +27,21 @@ curl http://127.0.0.1:18000/api/v1/health
 
 SQLite 数据保存在宿主机的 `data/` 目录中。不要把这个目录提交到 Git。
 
+## Systemd fallback
+
+If Docker image downloads are unavailable, deploy with the server's Python 3.10 runtime:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+cp deploy/cc98aiplus.service /etc/systemd/system/cc98aiplus.service
+systemctl daemon-reload
+systemctl enable --now cc98aiplus
+```
+
+Set `DATABASE_URL=sqlite:////opt/CC98AIPLUS/data/cc98_watch.db` in `backend/.env`
+before starting the service.
+
 ## Nginx
 
 将 `nginx-cc98ai.conf.example` 复制为一个新的站点配置文件，填写实际域名或服务器 IP，然后执行：

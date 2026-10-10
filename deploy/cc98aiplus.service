@@ -1,0 +1,16 @@
+[Unit]
+Description=CC98 AI Plus backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/CC98AIPLUS/backend
+EnvironmentFile=/opt/CC98AIPLUS/backend/.env
+ExecStart=/opt/CC98AIPLUS/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
