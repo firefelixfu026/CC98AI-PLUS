@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>CC98 AI+ 设置</title>
+  <style>
+    /* 配色与插件面板同源：CC98 青蓝，自动跟随系统深浅色 */
+    :root {
+      /* pri = 文字色，pri-fill = 按钮底色。深色模式下二者必须分开，
+         否则按钮底跟着文字变浅，按钮上的字就只能压成黑的。 */
+      --pri:#245d70; --pri-h:#1b4a5a; --pri-fill:#245d70; --pri-fill-h:#1b4a5a;
+      --pri-soft:#eef8fb; --pri-bd:#b8d5de; --on-pri:#fff;
+      --bg:#eef4f7; --card:#fff; --bd:#dfeaef; --bd-soft:#edf4f7;
+      --txt:#1a2b33; --txt2:#485e6a; --txt3:#5d7681;
+      --err:#b42318; --err-bg:#fef4f3; --err-bd:#f3ccc7; --ok:#287046;
+      --sh:0 1px 3px rgba(20,50,62,.06);
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --pri:#6fbdd6; --pri-h:#8ed0e5; --pri-fill:#2f7188; --pri-fill-h:#3a8299;
+        --pri-soft:#162b34; --pri-bd:#2d4c58; --on-pri:#f0f9fc;
+        --bg:#0b1317; --card:#101a1f; --bd:#25383f; --bd-soft:#1c2c33;
+        --txt:#e6eef2; --txt2:#9fb3bd; --txt3:#7d939e;
+        --err:#f2938a; --err-bg:#2a1614; --err-bd:#4a2521; --ok:#6cc48c;
+        --sh:0 1px 3px rgba(0,0,0,.4);
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--txt); line-height:1.5; }
+    .wrap { max-width:760px; margin:0 auto; padding:36px 24px 80px; }
+    h1 { font-size:22px; font-weight:650; margin:0 0 5px; letter-spacing:.2px; }
+    .sub { font-size:13px; color:var(--txt2); margin-bottom:26px; }
+    .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:20px 22px; margin-bottom:16px; box-shadow:var(--sh); }
+    .card h2 { font-size:14px; font-weight:650; margin:0 0 4px; letter-spacing:.2px; }
+    .card h2 + .card-sub { font-size:12px; color:var(--txt3); margin:0 0 16px; }
+    .card h2:last-of-type { margin-bottom:16px; }
+    .field { margin-bottom:14px; }
+    .field:last-child { margin-bottom:0; }
+    .field label { display:block; font-size:11px; font-weight:650; color:var(--txt2); margin-bottom:6px; letter-spacing:.3px; }
+    .field input, .field select { width:100%; padding:10px 13px; border:1px solid var(--bd); border-radius:9px; font-size:13px; font-family:inherit; color:var(--txt); background:var(--card); outline:none; transition:border-color .15s, box-shadow .15s; }
+    .field input::placeholder { color:var(--txt3); }
+    .field input:hover, .field select:hover { border-color:var(--pri-bd); }
+    .field input:focus, .field select:focus { border-color:var(--pri); box-shadow:0 0 0 3px color-mix(in srgb, var(--pri) 16%, transparent); }
+    .field input[type=range] { padding:0; border:none; background:none; accent-color:var(--pri); height:20px; cursor:pointer; }
+    .field input[type=range]:focus { box-shadow:none; }
+    .row { display:flex; gap:14px; }
+    .row .field { flex:1; }
+    .range-val { color:var(--pri); font-weight:700; font-variant-numeric:tabular-nums; }
+    .btn { border:none; border-radius:9px; padding:10px 18px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s, border-color .15s, transform .1s; }
+    .btn:active { transform:translateY(1px); }
+    .btn-primary { background:var(--pri-fill); color:var(--on-pri); }
+    .btn-primary:hover { background:var(--pri-fill-h); }
+    .btn-ghost { background:var(--card); color:var(--txt); border:1px solid var(--bd); }
+    .btn-ghost:hover { background:var(--pri-soft); border-color:var(--pri-bd); color:var(--pri); }
+    .btn-danger { background:var(--card); color:var(--err); border:1px solid var(--err-bd); }
+    .btn-danger:hover { background:var(--err-bg); }
+    .actions { display:flex; gap:10px; align-items:center; }
+    #status { font-size:13px; font-weight:500; }
+    .hint { font-size:12px; color:var(--txt2); line-height:1.65; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>CC98 AI+ 设置</h1>
+    <div class="sub">配置 AI 搜索用的 LLM、搜索预算，以及订阅提醒用的 Watch 后端地址。</div>
+
+    <div class="card">
+      <h2>LLM 配置（AI 搜索用）</h2>
+      <div class="row">
+        <div class="field">
+          <label>Provider</label>
+          <select id="provider">
+            <option value="openai">OpenAI 兼容</option>
+            <option value="anthropic">Anthropic</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>模型</label>
+          <input id="model" type="text" placeholder="Qwen/Qwen2.5-14B-Instruct" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Base URL</label>
+        <input id="baseUrl" type="text" placeholder="https://api.siliconflow.cn/v1" />
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input id="apiKey" type="password" placeholder="sk-…" />
+        <div class="hint">Key 只保存在本机，只发给你填的 Base URL，绝不上传。</div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Temperature（<span class="range-val" id="temperatureVal">0.3</span>）</label>
+          <input id="temperature" type="range" min="0" max="2" step="0.1" value="0.3" />
+        </div>
+        <div class="field">
+          <label>Max Tokens（0 = 不限制）</label>
+          <input id="maxTokens" type="number" min="0" max="200000" step="256" placeholder="0" />
+          <div class="hint">留 0 就不发送该参数，由模型自己决定上限。推理模型（deepseek-reasoner 等）的思维链也占这个额度，设小了正文会被挤掉。</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="testLLM" type="button">测试连接</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>搜索预算（控制消耗与速度）</h2>
+      <div class="row">
+        <div class="field">
+          <label>关键词数（<span class="range-val" id="keywordCountVal">4</span>）</label>
+          <input id="keywordCount" type="range" min="1" max="10" step="1" />
+        </div>
+        <div class="field">
+          <label>每词搜索结果（<span class="range-val" id="searchLimitPerKeywordVal">20</span>）</label>
+          <input id="searchLimitPerKeyword" type="range" min="5" max="50" step="5" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>选取主题数（<span class="range-val" id="topicLimitVal">10</span>）</label>
+          <input id="topicLimit" type="range" min="3" max="20" step="1" />
+        </div>
+        <div class="field">
+          <label>每主题最多读回复（<span class="range-val" id="maxRepliesPerTopicVal">30</span>）</label>
+          <input id="maxRepliesPerTopic" type="range" min="5" max="60" step="5" />
+        </div>
+      </div>
+      <div class="field">
+        <label>每楼截断字数（<span class="range-val" id="maxCharsPerReplyVal">1000</span>）</label>
+        <input id="maxCharsPerReply" type="range" min="200" max="2000" step="100" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Watch 后端（订阅提醒用）</h2>
+      <div class="field">
+        <label>后端地址</label>
+        <input id="backendBase" type="text" placeholder="http://127.0.0.1:8000" />
+        <div class="hint">本地开发默认 http://127.0.0.1:8000。</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="save" type="button">保存设置</button>
+      <button class="btn btn-danger" id="reset" type="button">恢复默认</button>
+      <span id="status"></span>
+    </div>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

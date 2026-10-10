@@ -1,0 +1,10 @@
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+.pytest_cache/
+.test-tmp/
+.env
+.venv/
+dist/
+build/
