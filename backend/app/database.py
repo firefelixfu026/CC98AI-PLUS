@@ -88,6 +88,15 @@ def _migrate_existing_tables() -> None:
             or "is_read" in notification_columns
         ):
             _migrate_sqlite_notifications(notification_columns)
+            notification_columns.add("matched_expressions_json")
+        if "matched_expressions_json" not in notification_columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE notifications ADD COLUMN matched_expressions_json TEXT"))
+    elif "notifications" in table_names:
+        notification_columns = {column["name"] for column in inspector.get_columns("notifications")}
+        if "matched_expressions_json" not in notification_columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE notifications ADD COLUMN matched_expressions_json TEXT"))
 
     _migrate_notification_list_rate_limit_state(table_names)
     _migrate_notification_preferences()
@@ -190,6 +199,7 @@ def _migrate_sqlite_notifications(notification_columns: set[str]) -> None:
                     topic_title VARCHAR(500) NOT NULL,
                     topic_url TEXT NOT NULL,
                     matched_reason TEXT,
+                    matched_expressions_json TEXT,
                     dispatch_pending BOOLEAN NOT NULL DEFAULT 0,
                     dispatch_processed_at DATETIME,
                     created_at DATETIME NOT NULL,

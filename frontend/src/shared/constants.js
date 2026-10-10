@@ -53,6 +53,7 @@ export const STORAGE_KEYS = {
   LAST_SEARCH: 'lastSearch',   // 上次搜索结果（跨标签页 / 刷新后恢复）
   NOTIFY_INTERVAL: 'notifyIntervalMinutes',
   NOTIFICATION_CACHE: 'notificationListCache',
+  THEME_PALETTE: 'cc98ThemePalette',
 };
 
 // 内存态存储 key（chrome.storage.session）

@@ -436,7 +436,12 @@ def _send_notification_batch(
                 continue
 
             items: list[NotificationItem] = [
-                {"title": item.topic_title, "url": item.topic_url, "reason": item.matched_reason}
+                {
+                    "title": item.topic_title,
+                    "url": item.topic_url,
+                    "reason": item.matched_reason,
+                    "expressions": json_loads(item.matched_expressions_json, []),
+                }
                 for item in filtered
             ]
             metrics["dispatch_batches"] += 1
@@ -587,14 +592,12 @@ def _create_matching_notifications(
         .all()
     }
     existing_keys = _existing_notification_keys(db, topics)
-    matched_user_topics: set[tuple[str, str]] = set()
+    matched_by_user_topic: dict[tuple[str, str], dict[str, Any]] = {}
 
     for topic in topics:
         topic_id = _topic_id(topic)
         for subscription in subscriptions:
             key = (str(subscription.user_id), topic_id)
-            if key in matched_user_topics:
-                continue
             metrics["candidate_pairs"] += 1
             result = match_subscription_topic(
                 {"expression": subscription.expression},
@@ -603,41 +606,53 @@ def _create_matching_notifications(
             if not result.matched:
                 continue
 
-            matched_user_topics.add(key)
-            metrics["matched_user_topics"] += 1
             metrics["matched_pairs"] += 1
-            if key in existing_keys:
-                logger.info("notification deduplicated user_id=%s topic_id=%s", subscription.user_id, topic_id)
-                continue
+            match = matched_by_user_topic.get(key)
+            if match is None:
+                match = {"topic": topic, "expressions": []}
+                matched_by_user_topic[key] = match
+                metrics["matched_user_topics"] += 1
+            if subscription.expression not in match["expressions"]:
+                match["expressions"].append(subscription.expression)
 
-            notification = Notification(
-                user_id=subscription.user_id,
-                topic_id=topic_id,
-                topic_title=str(topic.get("title") or ""),
-                topic_url=str(topic.get("url") or f"https://www.cc98.org/topic/{topic_id}"),
-                matched_reason=result.reason,
-                dispatch_pending=str(subscription.user_id) in enabled_user_ids,
-            )
-            try:
-                with db.begin_nested():
-                    db.add(notification)
-                    db.flush()
-            except IntegrityError:
-                logger.info("notification insert deduplicated by database user_id=%s topic_id=%s", subscription.user_id, topic_id)
-                existing_keys.add(key)
-                continue
+    for key, match in matched_by_user_topic.items():
+        user_id, topic_id = key
+        topic = match["topic"]
+        expressions = match["expressions"]
+        if key in existing_keys:
+            logger.info("notification deduplicated user_id=%s topic_id=%s", user_id, topic_id)
+            continue
 
+        notification = Notification(
+            user_id=user_id,
+            topic_id=topic_id,
+            topic_title=str(topic.get("title") or ""),
+            topic_url=str(topic.get("url") or f"https://www.cc98.org/topic/{topic_id}"),
+            matched_reason="命中订阅表达式：" + "；".join(expressions),
+            matched_expressions_json=json_dumps(expressions),
+            dispatch_pending=user_id in enabled_user_ids,
+        )
+        try:
+            with db.begin_nested():
+                db.add(notification)
+                db.flush()
+        except IntegrityError:
+            logger.info("notification insert deduplicated by database user_id=%s topic_id=%s", user_id, topic_id)
             existing_keys.add(key)
-            metrics["created_notifications"] += 1
-            if notification.dispatch_pending:
-                metrics["queued_notifications"] += 1
-            logger.info(
-                "notification created notification_id=%s user_id=%s topic_id=%s dispatch_pending=%s",
-                notification.id,
-                subscription.user_id,
-                topic_id,
-                notification.dispatch_pending,
-            )
+            continue
+
+        existing_keys.add(key)
+        metrics["created_notifications"] += 1
+        if notification.dispatch_pending:
+            metrics["queued_notifications"] += 1
+        logger.info(
+            "notification created notification_id=%s user_id=%s topic_id=%s expressions=%d dispatch_pending=%s",
+            notification.id,
+            user_id,
+            topic_id,
+            len(expressions),
+            notification.dispatch_pending,
+        )
 
 
 def _initial_metrics() -> dict[str, Any]:

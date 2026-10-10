@@ -2,6 +2,9 @@
 // 工具栏弹窗：快速状态 + 跳转
 // ============================================================
 import { STORAGE_KEYS, SESSION_KEYS } from '../../shared/constants.js';
+import { startStoredThemePaletteSync } from '../../shared/theme-palette.js';
+
+startStoredThemePaletteSync();
 
 const $ = (id) => document.getElementById(id);
 

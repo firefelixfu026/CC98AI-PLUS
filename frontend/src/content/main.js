@@ -8,6 +8,7 @@ import { renderSearchPanel } from './ui/search-panel.js';
 import { renderSubscriptions } from './ui/subscribe-panel.js';
 import { renderNotifications } from './ui/notif-panel.js';
 import { renderSettings } from './ui/settings-panel.js';
+import { refreshCC98Theme, startCC98ThemeSync } from './ui/theme-sync.js';
 import { refreshAuth } from './lib/token-extractor.js';
 import { isCC98Site } from './lib/webvpn.js';
 
@@ -54,6 +55,7 @@ function mount() {
   injectStyles();
   createSidePanel({ renderers: RENDERERS });
   createFloatingBtn({ onClick: () => getSidePanel()?.toggle() });
+  refreshCC98Theme();
 }
 
 // 检查按钮+面板是否都在，缺了就补；返回是否齐全
@@ -73,6 +75,7 @@ async function boot() {
   if (!ok) return;
 
   mount();
+  startCC98ThemeSync();
 
   // 提取 CC98 登录凭证到 session（供 AI 搜索使用），静默失败即可
   try {

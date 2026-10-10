@@ -96,6 +96,7 @@ class Notification(Base):
     topic_title = Column(String(500), nullable=False)
     topic_url = Column(Text, nullable=False)
     matched_reason = Column(Text, nullable=True)
+    matched_expressions_json = Column(Text, nullable=True)
     dispatch_pending = Column(Boolean, default=False, nullable=False)
     dispatch_processed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)

@@ -23,7 +23,26 @@ class SendResult:
     error: str | None = None
 
 
-NotificationItem = dict[str, str | None]
+NotificationItem = dict[str, Any]
+
+
+def _item_expressions(item: NotificationItem) -> list[str]:
+    explicit = item.get("expressions")
+    if isinstance(explicit, list):
+        values = [str(value).strip() for value in explicit if str(value).strip()]
+        if values:
+            return list(dict.fromkeys(values))
+
+    reason = str(item.get("reason") or "").strip()
+    for prefix in ("命中订阅表达式：", "命中搜索表达式：", "命中表达式："):
+        if reason.startswith(prefix):
+            value = reason[len(prefix) :].strip()
+            if not value:
+                return []
+            if prefix == "命中订阅表达式：":
+                return [part.strip() for part in value.split("；") if part.strip()]
+            return [value]
+    return []
 
 
 def redact_delivery_error(error: object, config: dict[str, Any] | None = None) -> str:
@@ -60,12 +79,22 @@ def build_notification_text(title: str, url: str, reason: str | None = None) -> 
 def build_batch_notification_text(items: list[NotificationItem]) -> str:
     if not items:
         return "CC98 订阅提醒\n\n本次没有新的匹配帖子。"
-    lines = [f"CC98 订阅提醒：本次找到 {len(items)} 个匹配帖子", ""]
-    for index, item in enumerate(items, start=1):
-        lines.append(f"{index}. {item.get('title') or '未命名帖子'}")
-        lines.append(f"链接：{item.get('url') or ''}")
-        if item.get("reason"):
-            lines.append(f"匹配原因：{item.get('reason')}")
+    groups: dict[str, list[NotificationItem]] = {}
+    for item in items:
+        expressions = _item_expressions(item) or ["其他匹配"]
+        for expression in expressions:
+            groups.setdefault(expression, []).append(item)
+
+    lines = [
+        f"CC98 订阅提醒：本次找到 {len(items)} 个匹配帖子",
+        f"共命中 {len(groups)} 个订阅表达式",
+        "",
+    ]
+    for expression, matched_items in groups.items():
+        lines.append(f"【表达式：{expression}】")
+        for index, item in enumerate(matched_items, start=1):
+            lines.append(f"{index}. {item.get('title') or '未命名帖子'}")
+            lines.append(f"   链接：{item.get('url') or ''}")
         lines.append("")
     return "\n".join(lines).strip()
 

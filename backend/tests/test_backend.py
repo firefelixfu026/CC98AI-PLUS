@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -217,7 +218,8 @@ def test_scan_fetches_global_latest_posts_once_for_multiple_subscriptions(tmp_pa
     assert calls == 1
     assert data["scanned_subscriptions"] == 2
     assert data["fetched_topics"] == 2
-    assert data["candidate_pairs"] == 3
+    assert data["candidate_pairs"] == 4
+    assert data["matched_pairs"] == 3
     assert data["created_notifications"] >= 2
 
 
@@ -494,7 +496,7 @@ def test_user_dispatch_cycle_ignores_channel_delay_and_allows_scheduler_grace(tm
         db.close()
 
 
-def test_first_matching_subscription_wins_for_same_user_topic(tmp_path: Path, monkeypatch) -> None:
+def test_all_matching_subscriptions_are_recorded_for_same_user_topic(tmp_path: Path, monkeypatch) -> None:
     client = _client(tmp_path)
     headers, user_id = _login(client)
     first = client.post("/api/v1/subscriptions", headers=headers, json={"expression": "新生"})
@@ -514,13 +516,15 @@ def test_first_matching_subscription_wins_for_same_user_topic(tmp_path: Path, mo
     response = client.post("/api/v1/tasks/scan", headers={"X-Admin-Token": "test-admin-token"})
     assert response.status_code == 200
     assert response.json()["matched_user_topics"] == 1
+    assert response.json()["matched_pairs"] == 2
     assert response.json()["created_notifications"] == 1
 
     db = SessionLocal()
     try:
         rows = db.query(Notification).filter(Notification.user_id == user_id, Notification.topic_id == "same-topic").all()
         assert len(rows) == 1
-        assert "新生" in (rows[0].matched_reason or "")
+        assert "新生；校园" in (rows[0].matched_reason or "")
+        assert json.loads(rows[0].matched_expressions_json) == ["新生", "校园"]
     finally:
         db.close()
 
@@ -940,13 +944,20 @@ def test_production_scan_does_not_fallback_to_mock(monkeypatch) -> None:
 def test_batch_notification_text() -> None:
     text = build_batch_notification_text(
         [
-            {"title": "topic 1", "url": "https://www.cc98.org/topic/1", "reason": "hit keyword"},
-            {"title": "topic 2", "url": "https://www.cc98.org/topic/2", "reason": "semantic match"},
+            {
+                "title": "topic 1",
+                "url": "https://www.cc98.org/topic/1",
+                "expressions": ["实习", "校招/秋招"],
+            },
+            {"title": "topic 2", "url": "https://www.cc98.org/topic/2", "expressions": ["实习"]},
         ]
     )
     assert "2 个匹配帖子" in text
-    assert "topic 1" in text
-    assert "topic 2" in text
+    assert "共命中 2 个订阅表达式" in text
+    assert text.index("【表达式：实习】") < text.index("【表达式：校招/秋招】")
+    internship_section = text.split("【表达式：实习】", 1)[1].split("【表达式：校招/秋招】", 1)[0]
+    assert "topic 1" in internship_section
+    assert "topic 2" in internship_section
 
 
 def test_email_notification_accepts_to_email(monkeypatch) -> None:
@@ -1130,6 +1141,7 @@ def test_legacy_sqlite_notifications_are_deduplicated_and_retired(tmp_path: Path
     inspector = inspect(migration_engine)
     columns = {column["name"] for column in inspector.get_columns("notifications")}
     assert "dispatch_pending" in columns
+    assert "matched_expressions_json" in columns
     assert "subscription_id" not in columns
     assert "is_read" not in columns
     assert any(set(item["column_names"]) == {"user_id", "topic_id"} for item in inspector.get_unique_constraints("notifications"))
@@ -1172,7 +1184,9 @@ def test_removing_is_read_preserves_current_pending_queue(tmp_path: Path, monkey
     monkeypatch.setattr(database, "engine", migration_engine)
     database.init_db()
 
-    assert "is_read" not in {column["name"] for column in inspect(migration_engine).get_columns("notifications")}
+    current_columns = {column["name"] for column in inspect(migration_engine).get_columns("notifications")}
+    assert "is_read" not in current_columns
+    assert "matched_expressions_json" in current_columns
     with migration_engine.connect() as connection:
         row = connection.execute(
             text("SELECT dispatch_pending, dispatch_processed_at FROM notifications WHERE id = 1")

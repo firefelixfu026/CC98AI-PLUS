@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>CC98 AI+ 设置</title>
   <style>
-    /* 配色与插件面板同源：CC98 青蓝，自动跟随系统深浅色 */
+    /* 兜底色；options.js 会读取内容页保存的 CC98 当前主题调色板。 */
     :root {
       /* pri = 文字色，pri-fill = 按钮底色。深色模式下二者必须分开，
          否则按钮底跟着文字变浅，按钮上的字就只能压成黑的。 */
@@ -28,7 +28,7 @@
       }
     }
     * { box-sizing: border-box; }
-    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--txt); line-height:1.5; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; background:var(--page-bg,var(--bg)); color:var(--txt); line-height:1.5; }
     .wrap { max-width:760px; margin:0 auto; padding:36px 24px 80px; }
     h1 { font-size:22px; font-weight:650; margin:0 0 5px; letter-spacing:.2px; }
     .sub { font-size:13px; color:var(--txt2); margin-bottom:26px; }

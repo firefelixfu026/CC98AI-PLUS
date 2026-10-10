@@ -3,7 +3,10 @@
 // 扩展页拥有 host_permissions，可直接 fetch 跨域做连接测试
 // ============================================================
 import { LLM_DEFAULTS, SEARCH_BUDGET_DEFAULTS, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
+import { startStoredThemePaletteSync } from '../../shared/theme-palette.js';
 import { listChannels, saveChannel, testChannel } from '../../content/lib/backend-api.js';
+
+startStoredThemePaletteSync();
 
 const $ = (id) => document.getElementById(id);
 let dingChannel = null;

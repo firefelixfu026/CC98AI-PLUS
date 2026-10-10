@@ -76,7 +76,7 @@ async function refresh(body, force) {
 
   const listEl = body.querySelector('#cc98-notif-list');
   if (!list.length) {
-    listEl.innerHTML = `<div class="cc98-empty"><div class="cc98-empty-icon">📭</div><div class="cc98-empty-sub">暂无通知，点击「立即检查新帖」扫描一次</div></div>`;
+    listEl.innerHTML = `<div class="cc98-empty"><div class="cc98-empty-icon">📭</div><div class="cc98-empty-sub">暂无通知，后端会定时检查新帖</div></div>`;
   } else {
     listEl.innerHTML = list
       .map((n) => `

@@ -61,11 +61,10 @@ export async function listSubscriptions() {
   return request('/api/v1/subscriptions?' + (await userIdQuery()));
 }
 
-export async function createSubscription({ name, description, boardId }) {
-  const email = await getUserEmail();
+export async function createSubscription({ expression }) {
   return request('/api/v1/subscriptions', {
     method: 'POST',
-    body: { user_id: email || 'demo_user', name, description: description || '', board_id: boardId || null },
+    body: { expression },
   });
 }
 

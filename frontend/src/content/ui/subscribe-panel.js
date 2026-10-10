@@ -33,19 +33,17 @@ async function draw(body) {
   body.innerHTML = `
     <div class="cc98-quota${warn ? ' warn' : ''}">已启用 ${activeCount} / ${limit} 个订阅</div>
     <div class="cc98-form-row">
-      <input id="cc98-sub-name" class="cc98-input" type="text" placeholder="订阅名称，如：实习" />
+      <input id="cc98-sub-expression" class="cc98-input" type="text"
+             maxlength="255" placeholder="例如：微积分/微甲/vjf 历年卷 资料" />
       <button id="cc98-sub-add" class="cc98-btn-primary" type="button">添加</button>
     </div>
-    <input id="cc98-sub-desc" class="cc98-input" type="text"
-           placeholder="关键词，用空格分开，如：实习 内推 招聘 日常实习" />
     <div class="cc98-setting-help" style="margin:6px 0 12px">
-      名称和关键词都会参与匹配：新帖的标题或正文里<b>出现任意一个词</b>就提醒你。
-      中文不会自动分词，所以请写成「实习 内推」而不是「我想找实习内推」。
+      空格表示“且”，半角 / 表示“或”。上例表示帖子需要同时包含“历年卷”和“资料”，
+      并包含“微积分、微甲、vjf”中的任意一个。每个关键词至少 2 个字符。
     </div>
     <div id="cc98-sub-list"></div>`;
 
-  const nameEl = body.querySelector('#cc98-sub-name');
-  const descEl = body.querySelector('#cc98-sub-desc');
+  const expressionEl = body.querySelector('#cc98-sub-expression');
   const listEl = body.querySelector('#cc98-sub-list');
 
   function renderList() {
@@ -57,8 +55,8 @@ async function draw(body) {
       .map((s) => `
         <div class="cc98-sub${s.status === 'paused' ? ' paused' : ''}" data-id="${s.id}">
           <div style="min-width:0">
-            <div class="tn">${esc(s.name)}</div>
-            ${s.description ? `<div class="tm">${esc(s.description)}</div>` : ''}
+            <div class="tn">${esc(s.expression)}</div>
+            <div class="tm">${s.status === 'enabled' ? '正在匹配新帖' : '已暂停'}</div>
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button class="pause" type="button" data-act="pause">${s.status === 'enabled' ? '暂停' : '恢复'}</button>
@@ -70,18 +68,22 @@ async function draw(body) {
   renderList();
 
   body.querySelector('#cc98-sub-add').addEventListener('click', async () => {
-    const name = nameEl.value.trim();
-    if (!name) {
-      toast('请先填写订阅名称');
+    const expression = expressionEl.value.trim();
+    if (!expression) {
+      toast('请先填写订阅表达式');
       return;
     }
     try {
-      await createSubscription({ name, description: descEl.value.trim() });
+      await createSubscription({ expression });
       toast('订阅已添加');
       await draw(body);
     } catch (e) {
       toast(e.message || '添加失败');
     }
+  });
+
+  expressionEl.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') body.querySelector('#cc98-sub-add').click();
   });
 
   listEl.addEventListener('click', async (e) => {
