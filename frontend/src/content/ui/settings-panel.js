@@ -4,8 +4,24 @@
 import { listChannels, saveChannel, testChannel, getHealth } from '../lib/backend-api.js';
 import { isLoggedIn, getEmail, logout, sendCode, verifyCode } from '../lib/auth.js';
 import { getBackendBase, getLocal, setLocal } from '../lib/storage.js';
-import { STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
+import { MSG, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
 import { esc, toast } from '../lib/html-utils.js';
+
+async function openFullSettings() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: MSG.OPEN_OPTIONS });
+    if (!response || !response.ok) {
+      throw new Error((response && response.error) || '后台未能打开设置页');
+    }
+  } catch (error) {
+    try {
+      await chrome.runtime.openOptionsPage();
+    } catch (_) {
+      console.error('[CC98 AI+] 打开设置页失败：', error);
+      toast('打开设置页失败，请在扩展管理页重新加载插件后刷新 CC98');
+    }
+  }
+}
 
 function fmtInterval(min) {
   if (!min) return '';
@@ -52,7 +68,7 @@ function renderLogin(body) {
   const verifyBtn = body.querySelector('#cc98-login-verify');
 
   body.querySelector('#cc98-login-open-options').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
+    void openFullSettings();
   });
 
   sendBtn.addEventListener('click', async () => {
@@ -221,7 +237,7 @@ async function draw(body) {
 
   // 打开完整设置页（LLM / 预算 / 过滤强度都在那里）
   body.querySelector('#cc98-open-options').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
+    void openFullSettings();
   });
 
   // 读取各渠道表单

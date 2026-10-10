@@ -38,6 +38,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, status: 0, data: { detail: e && e.message ? e.message : String(e) } }));
     return true; // 保持异步 sendResponse 有效
   }
+  if (msg && msg.type === MSG.OPEN_OPTIONS) {
+    chrome.runtime.openOptionsPage()
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e && e.message ? e.message : String(e) }));
+    return true;
+  }
   return false;
 });
 
