@@ -10,7 +10,7 @@ import { renderResult, renderError } from './result-renderer.js';
 import { classifyError } from '../lib/errors.js';
 import {
   readSearchState, subscribeSearchState, publishRunning, publishDone,
-  publishError, publishCancelled, clearSearchState, isStale, STALE_MS,
+  publishError, publishCancelled, clearSearchState, isStale, claimSearchSlot, STALE_MS,
 } from '../lib/search-state.js';
 import { ERROR_TYPES } from '../lib/errors.js';
 
@@ -60,6 +60,7 @@ export function renderSearchPanel(body) {
       <button id="cc98-search-btn" class="cc98-btn-primary" type="button">搜索</button>
       <button id="cc98-search-stop" class="cc98-secondary" type="button" hidden>停止</button>
     </div>
+    <div class="cc98-result-meta">用于总结的帖子正文和回复会发送到你在设置中选择的 AI 服务商；含禁止转载或外传声明的内容会被过滤。</div>
     <div id="cc98-search-meta" class="cc98-result-meta" hidden>
       <span id="cc98-search-meta-text"></span>
       <button id="cc98-search-clear" class="cc98-link-btn" type="button">清空</button>
@@ -217,6 +218,16 @@ export function renderSearchPanel(body) {
     const cur = await readSearchState();
     if (cur && cur.status === 'running' && !isStale(cur)) {
       render(cur);
+      return;
+    }
+
+    const cooldownRemaining = await claimSearchSlot();
+    if (cooldownRemaining > 0) {
+      const seconds = Math.ceil(cooldownRemaining / 1000);
+      result.innerHTML = renderError({
+        message: `完整搜索冷却中，请等待 ${seconds} 秒`,
+        hint: '冷却只限制完整搜索次数，不会把单个请求间隔提高到 10 秒。',
+      });
       return;
     }
 

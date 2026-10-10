@@ -3,8 +3,9 @@
 // ============================================================
 import { getPostDetail } from '../lib/cc98-api.js';
 import { AppError, ERROR_TYPES } from '../lib/errors.js';
+import { hasRestrictedNotice } from '../lib/content-policy.js';
 
-export async function readReplies(topics, budget, onProgress, signal) {
+export async function readReplies(topics, budget, onProgress, signal, requestBudget) {
   const maxReplies = budget.maxRepliesPerTopic || 30;
   const maxChars = budget.maxCharsPerReply || 1000;
   const enriched = [];
@@ -17,20 +18,31 @@ export async function readReplies(topics, budget, onProgress, signal) {
       const detail = await getPostDetail(t.id, {
         pageSize: 20,
         maxPages: Math.ceil(maxReplies / 20),
+        requestBudget,
       });
       const posts = (detail.posts || []).slice(0, maxReplies);
-      const replies = posts.map((p) => ({
+      const cleaned = posts.map((p) => ({
         floor: p.floor,
         author: p.is_anonymous ? '匿名' : (p.user_name || '匿名'),
         content: truncate(cleanText(p.content), maxChars),
       }));
+      // 首楼的声明通常约束整帖；回复里的声明只约束该楼层。
+      const aiExcluded = hasRestrictedNotice(t.title)
+        || Boolean(cleaned[0] && hasRestrictedNotice(cleaned[0].content));
+      const replies = aiExcluded ? [] : cleaned.filter((p) => !hasRestrictedNotice(p.content));
       enriched.push({
         ...t,
         replies,
         reply_count: replies.length,
+        omitted_reply_count: cleaned.length - replies.length,
+        aiExcluded,
+        aiExclusionReason: aiExcluded ? '首楼含禁止转载或外传声明' : '',
         url: detail.url || t.url,
       });
     } catch (e) {
+      if (e && [ERROR_TYPES.CC98_ACCESS_GUARD, ERROR_TYPES.SEARCH_REQUEST_LIMIT].includes(e.type)) {
+        throw e;
+      }
       // 单个主题读取失败不致命，保留主题但不带回复
       enriched.push({ ...t, replies: [], reply_count: 0, url: t.url, readError: e && e.message });
     }

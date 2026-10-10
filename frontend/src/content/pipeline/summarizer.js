@@ -5,7 +5,11 @@ import { callLLM } from '../lib/llm-client.js';
 import { SUMMARIZE_TOPICS_SYSTEM, summarizeTopicsUser } from '../lib/prompts.js';
 
 export async function generateSummary(query, keywords, topics) {
-  const topicsText = formatTopics(topics);
+  const safeTopics = topics.filter((topic) => !topic.aiExcluded);
+  if (!safeTopics.length) {
+    return '相关帖子带有禁止转载、外传或截图等声明，插件没有把帖子正文发送给外部 AI。你仍可通过下方来源链接自行查看原帖。';
+  }
+  const topicsText = formatTopics(safeTopics);
   const user = summarizeTopicsUser(query, keywords.join('、'), topicsText);
   return callLLM({ system: SUMMARIZE_TOPICS_SYSTEM, user });
 }

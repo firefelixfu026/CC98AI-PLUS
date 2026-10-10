@@ -734,7 +734,9 @@ def test_scan_uses_numeric_boundary_when_exact_cursor_disappears(tmp_path: Path,
     db = SessionLocal()
     try:
         assert db.get(SystemCursor, watch.CURSOR_SOURCE).cursor_value == "105"
-        assert db.get(CC98Topic, "101") is not None
+        stored_topic = db.get(CC98Topic, "101")
+        assert stored_topic is not None
+        assert stored_topic.raw_json is None
         assert db.get(CC98Topic, "99") is None
     finally:
         db.close()
@@ -849,6 +851,52 @@ def test_first_scan_establishes_server_baseline_without_historical_notifications
         db.close()
 
 
+def test_production_rejects_initial_backfill(monkeypatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("WATCH_INITIAL_CURSOR_MODE", "backfill")
+
+    from app import watch
+
+    monkeypatch.setattr(
+        watch,
+        "fetch_new_topics",
+        lambda limit=20: ([{"topic_id": "123", "title": "topic"}], "cc98_new_posts"),
+    )
+    try:
+        watch._collect_new_topics(None)
+        raise AssertionError("production backfill should be rejected")
+    except RuntimeError as exc:
+        assert "backfill is not allowed" in str(exc)
+
+
+def test_database_upgrade_clears_legacy_topic_raw_json(tmp_path: Path) -> None:
+    _client(tmp_path)
+
+    from app import database
+    from app.models import CC98Topic
+
+    db = database.SessionLocal()
+    try:
+        db.add(
+            CC98Topic(
+                topic_id="legacy-topic",
+                title="legacy",
+                url="https://www.cc98.org/topic/legacy-topic",
+                raw_json='{"content":"full post body"}',
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    database.init_db()
+    db = database.SessionLocal()
+    try:
+        assert db.get(CC98Topic, "legacy-topic").raw_json is None
+    finally:
+        db.close()
+
+
 def test_notification_batches_are_split_at_configured_size(tmp_path: Path, monkeypatch) -> None:
     client = _client(tmp_path)
     headers, user_id = _login(client)
@@ -950,14 +998,24 @@ def test_batch_notification_text() -> None:
                 "expressions": ["实习", "校招/秋招"],
             },
             {"title": "topic 2", "url": "https://www.cc98.org/topic/2", "expressions": ["实习"]},
+            {
+                "title": "legacy topic",
+                "url": "https://www.cc98.org/topic/3",
+                "reason": "命中表达式：保研；考研",
+            },
         ]
     )
-    assert "2 个匹配帖子" in text
-    assert "共命中 2 个订阅表达式" in text
-    assert text.index("【表达式：实习】") < text.index("【表达式：校招/秋招】")
-    internship_section = text.split("【表达式：实习】", 1)[1].split("【表达式：校招/秋招】", 1)[0]
+    assert "3 个匹配帖子" in text
+    assert "共命中 4 个订阅表达式" in text
+    assert text.index("【订阅表达式：实习｜2 个帖子】") < text.index("【订阅表达式：校招/秋招｜1 个帖子】")
+    internship_section = text.split("【订阅表达式：实习｜2 个帖子】", 1)[1].split(
+        "【订阅表达式：校招/秋招｜1 个帖子】", 1
+    )[0]
     assert "topic 1" in internship_section
     assert "topic 2" in internship_section
+    assert "【订阅表达式：保研｜1 个帖子】" in text
+    assert "【订阅表达式：考研｜1 个帖子】" in text
+    assert text.count("legacy topic") == 2
 
 
 def test_email_notification_accepts_to_email(monkeypatch) -> None:
@@ -1070,27 +1128,31 @@ def test_cc98_requests_ignore_system_proxy_by_default(monkeypatch) -> None:
     assert captured == [("post", False), ("get", False)]
 
 
-def test_cc98_new_posts_retries_403_with_bounded_backoff(monkeypatch) -> None:
+def test_cc98_new_posts_stops_on_access_guard_without_retry(monkeypatch) -> None:
     from app import cc98_client
 
-    client = cc98_client.CC98ServiceClient()
-    client.new_posts_min_interval = 0
-    client.new_posts_retry_attempts = 2
-    attempts = 0
+    for status_code in (403, 429):
+        client = cc98_client.CC98ServiceClient()
+        client.new_posts_min_interval = 0
+        attempts = 0
 
-    def fake_get_json(path, *, params=None, retry_auth=True):
-        nonlocal attempts
-        attempts += 1
-        if attempts < 3:
-            raise cc98_client.CC98APIError("GET", "https://api.cc98.org/topic/new", 403, "")
-        return [{"id": 123, "title": "latest"}]
+        def fake_get_json(path, *, params=None, retry_auth=True):
+            nonlocal attempts
+            attempts += 1
+            raise cc98_client.CC98APIError(
+                "GET",
+                "https://api.cc98.org/topic/new",
+                status_code,
+                "access limited",
+            )
 
-    monkeypatch.setattr(client, "_get_json", fake_get_json)
-    monkeypatch.setattr(cc98_client.time, "sleep", lambda seconds: None)
-
-    topics = client.get_new_posts(limit=20, offset=40)
-    assert attempts == 3
-    assert topics[0]["topic_id"] == "123"
+        monkeypatch.setattr(client, "_get_json", fake_get_json)
+        try:
+            client.get_new_posts(limit=20, offset=40)
+            raise AssertionError("access guard should stop the request")
+        except cc98_client.CC98APIError as exc:
+            assert exc.status_code == status_code
+        assert attempts == 1
 
 
 def test_legacy_sqlite_notifications_are_deduplicated_and_retired(tmp_path: Path, monkeypatch) -> None:

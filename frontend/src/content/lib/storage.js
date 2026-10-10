@@ -3,7 +3,10 @@
 //   local  → 持久化（LLM 配置、后端地址、用户邮箱等）
 //   session → 内存态（CC98 token，关闭浏览器即清空）
 // ============================================================
-import { STORAGE_KEYS, SESSION_KEYS, LLM_DEFAULTS, SEARCH_BUDGET_DEFAULTS, BACKEND_DEFAULT_BASE, SUBSCRIPTION_LIMIT_FALLBACK } from '../../shared/constants.js';
+import {
+  STORAGE_KEYS, SESSION_KEYS, LLM_DEFAULTS, SEARCH_BUDGET_DEFAULTS,
+  SEARCH_BUDGET_LIMITS, BACKEND_DEFAULT_BASE, SUBSCRIPTION_LIMIT_FALLBACK,
+} from '../../shared/constants.js';
 
 export async function getLocal(key) {
   const obj = await chrome.storage.local.get(key);
@@ -32,7 +35,20 @@ export async function getLLMConfig() {
 
 export async function getSearchBudget() {
   const saved = (await getLocal(STORAGE_KEYS.BUDGET)) || {};
-  return { ...SEARCH_BUDGET_DEFAULTS, ...saved };
+  return normalizeSearchBudget({ ...SEARCH_BUDGET_DEFAULTS, ...saved });
+}
+
+export function normalizeSearchBudget(budget) {
+  const normalized = {};
+  for (const [key, fallback] of Object.entries(SEARCH_BUDGET_DEFAULTS)) {
+    const limits = SEARCH_BUDGET_LIMITS[key];
+    const value = Number(budget && budget[key]);
+    const finite = Number.isFinite(value) ? value : fallback;
+    normalized[key] = limits
+      ? Math.max(limits.min, Math.min(limits.max, finite))
+      : finite;
+  }
+  return normalized;
 }
 
 export async function getBackendBase() {

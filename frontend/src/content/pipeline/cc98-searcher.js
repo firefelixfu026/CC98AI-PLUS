@@ -4,7 +4,7 @@
 import { searchPosts } from '../lib/cc98-api.js';
 import { AppError, ERROR_TYPES } from '../lib/errors.js';
 
-export async function searchAndDeduplicate(keywords, limitPerKeyword, onProgress, signal) {
+export async function searchAndDeduplicate(keywords, limitPerKeyword, onProgress, signal, requestBudget) {
   const seen = new Set();
   const topics = [];
   let lastError = null;
@@ -16,10 +16,15 @@ export async function searchAndDeduplicate(keywords, limitPerKeyword, onProgress
     const kw = keywords[i];
     let results = [];
     try {
-      results = await searchPosts(kw, null, limitPerKeyword);
+      results = await searchPosts(kw, null, limitPerKeyword, 0, { requestBudget });
     } catch (e) {
       // 登录态 / 全局错误直接抛；单个关键词失败则跳过继续
-      if (e && (e.type === ERROR_TYPES.CC98_NOT_LOGGED_IN || e.type === ERROR_TYPES.CC98_TOKEN_EXPIRED)) {
+      if (e && [
+        ERROR_TYPES.CC98_NOT_LOGGED_IN,
+        ERROR_TYPES.CC98_TOKEN_EXPIRED,
+        ERROR_TYPES.CC98_ACCESS_GUARD,
+        ERROR_TYPES.SEARCH_REQUEST_LIMIT,
+      ].includes(e.type)) {
         throw e;
       }
       console.warn('[CC98 AI+] 关键词搜索失败：', kw, e);

@@ -1,6 +1,6 @@
 // ============================================================
 // CC98 API 客户端（旧 data/cc98_client.py 的 JS 翻译）
-//   searchPosts：搜主题，1.2s 限速 + 403 重试
+//   searchPosts：搜主题，1.2s 限速；遇到访问保护立即停止
 //   getPostDetail：读一个主题 + 所有楼层，404 回退 /post/basic
 // ============================================================
 import { fetchProxy } from './net.js';
@@ -9,12 +9,16 @@ import { AppError, ERROR_TYPES } from './errors.js';
 import { isWebVPN, getApiBase, getWebBase } from './webvpn.js';
 import {
   CC98_SEARCH_MIN_INTERVAL_MS,
-  CC98_SEARCH_RETRY_ATTEMPTS,
+  SEARCH_CACHE_TTL_MS,
+  TOPIC_CACHE_TTL_MS,
 } from '../../shared/constants.js';
 
 // 搜索限速状态
 let _searchChain = Promise.resolve();
 let _lastSearchAt = 0;
+const _searchCache = new Map();
+const _topicCache = new Map();
+const MAX_CACHE_ENTRIES = 40;
 
 function _withRateLimit(fn) {
   const run = _searchChain.then(async () => {
@@ -54,15 +58,63 @@ function _headers(auth) {
   return headers;
 }
 
-async function _getJson(path, params, auth) {
+function _clone(value) {
+  if (typeof structuredClone === 'function') return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
+}
+
+function _cacheGet(cache, key, ttlMs) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > ttlMs) {
+    cache.delete(key);
+    return null;
+  }
+  return _clone(entry.value);
+}
+
+function _cacheSet(cache, key, value) {
+  cache.set(key, { ts: Date.now(), value: _clone(value) });
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    cache.delete(cache.keys().next().value);
+  }
+}
+
+function _guardText(value) {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  return String(value.detail || value.message || value.error || '');
+}
+
+function _isAccessGuard(errOrPayload) {
+  const status = errOrPayload && errOrPayload.status;
+  if (status === 403 || status === 429) return true;
+  return /反爬|爬虫|访问过于频繁|请求过于频繁|too many requests|rate.?limit|last_search/i
+    .test(_guardText(errOrPayload));
+}
+
+function _accessGuardError(detail) {
+  return new AppError(
+    ERROR_TYPES.CC98_ACCESS_GUARD,
+    'CC98 返回了访问限制或反爬提示，本轮搜索已停止',
+    detail
+  );
+}
+
+async function _getJson(path, params, auth, requestBudget) {
   const qs = new URLSearchParams(params || {}).toString();
   const url = (await getApiBase()) + path + (qs ? '?' + qs : '');
   console.debug('[CC98 AI+] 请求：', url);
   // WebVPN 靠 cookie 维持会话；cookie 型凭证也只能靠浏览器自动携带
   const credentials = isWebVPN() || auth.type === 'cookie' ? 'include' : 'omit';
   try {
-    return await fetchProxy(url, { method: 'GET', headers: _headers(auth), credentials });
+    if (requestBudget && typeof requestBudget.consume === 'function') requestBudget.consume();
+    const payload = await fetchProxy(url, { method: 'GET', headers: _headers(auth), credentials });
+    if (_isAccessGuard(payload)) throw _accessGuardError(_guardText(payload));
+    return payload;
   } catch (err) {
+    if (err && err.type === ERROR_TYPES.CC98_ACCESS_GUARD) throw err;
+    if (_isAccessGuard(err)) throw _accessGuardError(err.detail || err.message);
     // 明确标记成 CC98 的错误，否则上层只看到 401 会误判成 LLM API Key 问题
     if (err && err.status === 401) {
       throw new AppError(
@@ -75,24 +127,18 @@ async function _getJson(path, params, auth) {
   }
 }
 
-async function _searchJson(path, params, auth) {
-  for (let attempt = 0; attempt <= CC98_SEARCH_RETRY_ATTEMPTS; attempt++) {
-    try {
-      return await _withRateLimit(() => _getJson(path, params, auth));
-    } catch (err) {
-      const isRateLimited = err && err.status === 403;
-      if (!isRateLimited || attempt >= CC98_SEARCH_RETRY_ATTEMPTS) throw err;
-      await new Promise((r) => setTimeout(r, Math.max(CC98_SEARCH_MIN_INTERVAL_MS, 1000)));
-    }
-  }
-  throw new Error('搜索重试失败');
+function _limitedGetJson(path, params, auth, requestBudget) {
+  return _withRateLimit(() => _getJson(path, params, auth, requestBudget));
 }
 
 // 搜索主题，返回标准化主题数组
-export async function searchPosts(query, boardId = null, limit = 20, offset = 0) {
+export async function searchPosts(query, boardId = null, limit = 20, offset = 0, opts = {}) {
   const q = (query || '').trim();
   if (!q) throw new Error('query must not be empty');
   const auth = _ensureAuth();
+  const cacheKey = `${boardId || 0}|${q}|${limit}|${offset}`;
+  const cached = _cacheGet(_searchCache, cacheKey, SEARCH_CACHE_TTL_MS);
+  if (cached) return cached;
 
   let endpoint = '/topic/search';
   if (boardId != null && boardId !== 0) endpoint = `/topic/search/board/${boardId}`;
@@ -101,7 +147,12 @@ export async function searchPosts(query, boardId = null, limit = 20, offset = 0)
   let cur = offset;
   while (topics.length < limit) {
     const size = Math.min(20, limit - topics.length);
-    const payload = await _searchJson(endpoint, { keyword: q, from: cur, size }, auth);
+    const payload = await _limitedGetJson(
+      endpoint,
+      { keyword: q, from: cur, size },
+      auth,
+      opts.requestBudget
+    );
     // 返回不是数组，说明拿到的不是搜索结果（WebVPN 拦截页、登录跳转、错误 HTML 等）。
     // 这种情况必须报错，不能当成「搜不到」静默吞掉。
     if (!Array.isArray(payload)) {
@@ -116,7 +167,9 @@ export async function searchPosts(query, boardId = null, limit = 20, offset = 0)
     if (payload.length < size) break;
     cur += payload.length;
   }
-  return topics.slice(0, limit);
+  const result = topics.slice(0, limit);
+  _cacheSet(_searchCache, cacheKey, result);
+  return result;
 }
 
 // 读一个主题 + 所有楼层
@@ -124,18 +177,21 @@ export async function getPostDetail(postId, opts = {}) {
   const pageSize = opts.pageSize || 10;
   const maxPages = opts.maxPages || null;
   const auth = _ensureAuth();
+  const cacheKey = `${postId}|${pageSize}|${maxPages == null ? 'all' : maxPages}`;
+  const cached = _cacheGet(_topicCache, cacheKey, TOPIC_CACHE_TTL_MS);
+  if (cached) return cached;
 
   let topicId = postId;
   let topicInfo;
   try {
-    topicInfo = await _getJson(`/topic/${topicId}`, null, auth);
+    topicInfo = await _limitedGetJson(`/topic/${topicId}`, null, auth, opts.requestBudget);
   } catch (err) {
     if (!err || err.status !== 404) throw err;
-    const basic = await _getJson('/post/basic', { id: postId }, auth);
+    const basic = await _limitedGetJson('/post/basic', { id: postId }, auth, opts.requestBudget);
     const bp = Array.isArray(basic) ? basic[0] : basic;
     if (!bp || !bp.topicId) throw err;
     topicId = bp.topicId;
-    topicInfo = await _getJson(`/topic/${topicId}`, null, auth);
+    topicInfo = await _limitedGetJson(`/topic/${topicId}`, null, auth, opts.requestBudget);
   }
 
   const isDict = topicInfo && typeof topicInfo === 'object' && !Array.isArray(topicInfo);
@@ -147,7 +203,12 @@ export async function getPostDetail(postId, opts = {}) {
   let pagesRead = 0;
   while (true) {
     if (maxPages != null && pagesRead >= maxPages) break;
-    const payload = await _getJson(`/topic/${topicId}/post`, { from: offset, size: pageSize }, auth);
+    const payload = await _limitedGetJson(
+      `/topic/${topicId}/post`,
+      { from: offset, size: pageSize },
+      auth,
+      opts.requestBudget
+    );
     if (!Array.isArray(payload) || !payload.length) break;
     posts.push(...payload.map(normalizePost));
     pagesRead++;
@@ -156,12 +217,14 @@ export async function getPostDetail(postId, opts = {}) {
     offset += payload.length;
   }
 
-  return {
+  const result = {
     topic,
     posts,
     post_count: posts.length,
     url: `${getWebBase()}/topic/${topicId}`,
   };
+  _cacheSet(_topicCache, cacheKey, result);
+  return result;
 }
 
 function _firstPresent(obj, names) {

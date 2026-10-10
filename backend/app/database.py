@@ -98,6 +98,14 @@ def _migrate_existing_tables() -> None:
             with engine.begin() as connection:
                 connection.execute(text("ALTER TABLE notifications ADD COLUMN matched_expressions_json TEXT"))
 
+    # 旧版本曾保存 CC98 接口的完整原始 JSON。通知只需要结构化元数据，
+    # 因此升级时清空旧值，并由 watch.py 停止继续写入。
+    if "cc98_topics" in table_names:
+        topic_columns = {column["name"] for column in inspector.get_columns("cc98_topics")}
+        if "raw_json" in topic_columns:
+            with engine.begin() as connection:
+                connection.execute(text("UPDATE cc98_topics SET raw_json = NULL WHERE raw_json IS NOT NULL"))
+
     _migrate_notification_list_rate_limit_state(table_names)
     _migrate_notification_preferences()
 

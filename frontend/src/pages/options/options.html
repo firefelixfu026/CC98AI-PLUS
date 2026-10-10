@@ -99,6 +99,7 @@
         <label>API Key</label>
         <input id="apiKey" type="password" placeholder="sk-…" />
         <div class="hint">Key 只保存在本机，只发给你填的 Base URL，绝不上传。</div>
+        <div class="hint">进行 AI 搜索时，插件会把选中的 CC98 帖子正文和回复发送到该 AI 服务商用于生成总结；项目后端不会接收这些正文。含“请勿转载”“禁止外传”等声明的内容会被过滤。</div>
       </div>
       <div class="row">
         <div class="field">
@@ -118,24 +119,25 @@
 
     <div class="card">
       <h2>搜索预算（控制消耗与速度）</h2>
+      <p class="card-sub">一轮搜索最多访问 CC98 20 次，两轮完整搜索至少间隔 45 秒；短期缓存会避免重复访问。</p>
       <div class="row">
         <div class="field">
           <label>关键词数（<span class="range-val" id="keywordCountVal">4</span>）</label>
-          <input id="keywordCount" type="range" min="1" max="10" step="1" />
+          <input id="keywordCount" type="range" min="1" max="4" step="1" />
         </div>
         <div class="field">
           <label>每词搜索结果（<span class="range-val" id="searchLimitPerKeywordVal">20</span>）</label>
-          <input id="searchLimitPerKeyword" type="range" min="5" max="50" step="5" />
+          <input id="searchLimitPerKeyword" type="range" min="5" max="20" step="5" />
         </div>
       </div>
       <div class="row">
         <div class="field">
-          <label>选取主题数（<span class="range-val" id="topicLimitVal">10</span>）</label>
-          <input id="topicLimit" type="range" min="3" max="20" step="1" />
+          <label>选取主题数（<span class="range-val" id="topicLimitVal">5</span>）</label>
+          <input id="topicLimit" type="range" min="3" max="5" step="1" />
         </div>
         <div class="field">
-          <label>每主题最多读回复（<span class="range-val" id="maxRepliesPerTopicVal">30</span>）</label>
-          <input id="maxRepliesPerTopic" type="range" min="5" max="60" step="5" />
+          <label>每主题最多读回复（<span class="range-val" id="maxRepliesPerTopicVal">20</span>）</label>
+          <input id="maxRepliesPerTopic" type="range" min="5" max="20" step="5" />
         </div>
       </div>
       <div class="field">

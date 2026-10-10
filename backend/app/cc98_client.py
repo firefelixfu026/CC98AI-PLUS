@@ -34,9 +34,7 @@ class CC98ServiceClient:
         self.base_url = os.getenv("CC98_API_BASE_URL", "https://api.cc98.org").rstrip("/") + "/"
         self.timeout = float(os.getenv("CC98_TIMEOUT", "10"))
         self.search_min_interval = float(os.getenv("CC98_SEARCH_MIN_INTERVAL_SECONDS", "1.2"))
-        self.search_retry_attempts = int(os.getenv("CC98_SEARCH_RETRY_ATTEMPTS", "2"))
         self.new_posts_min_interval = float(os.getenv("CC98_NEW_POSTS_MIN_INTERVAL_SECONDS", "2"))
-        self.new_posts_retry_attempts = int(os.getenv("CC98_NEW_POSTS_RETRY_ATTEMPTS", "2"))
         self._search_lock = threading.Lock()
         self._last_search_at = 0.0
         self._new_posts_lock = threading.Lock()
@@ -131,41 +129,27 @@ class CC98ServiceClient:
         return response.json()
 
     def _get_search_json(self, path: str, *, params: dict[str, Any]) -> Any:
-        for attempt in range(self.search_retry_attempts + 1):
-            self._wait_search_slot()
-            try:
-                return self._get_json(path, params=params)
-            except CC98APIError as exc:
-                rate_limited = exc.status_code == 403 and "last_search_in_1_seconds" in exc.body
-                if not rate_limited or attempt >= self.search_retry_attempts:
-                    raise
-                time.sleep(max(self.search_min_interval, 1.0))
-        return []
+        self._wait_search_slot()
+        try:
+            return self._get_json(path, params=params)
+        except CC98APIError as exc:
+            if _is_access_guard_error(exc):
+                logger.warning("CC98 search access guard triggered status=%d; request stopped", exc.status_code)
+            raise
 
     def _get_new_posts_json(self, *, params: dict[str, Any]) -> Any:
         offset = int(params.get("from") or 0)
-        for attempt in range(self.new_posts_retry_attempts + 1):
-            self._wait_new_posts_slot()
-            try:
-                return self._get_json("/topic/new", params=params)
-            except CC98APIError as exc:
-                if exc.status_code != 403 or attempt >= self.new_posts_retry_attempts:
-                    logger.warning(
-                        "CC98 new-post request failed offset=%d status=%d retry=%d",
-                        offset,
-                        exc.status_code,
-                        attempt,
-                    )
-                    raise
-                delay = max(self.new_posts_min_interval, 0.1) * (2**attempt)
-                logger.warning(
-                    "CC98 new-post request rate-limited offset=%d status=403 retry=%d delay_seconds=%.1f",
-                    offset,
-                    attempt + 1,
-                    delay,
-                )
-                time.sleep(delay)
-        return []
+        self._wait_new_posts_slot()
+        try:
+            return self._get_json("/topic/new", params=params)
+        except CC98APIError as exc:
+            logger.warning(
+                "CC98 new-post request stopped offset=%d status=%d access_guard=%s",
+                offset,
+                exc.status_code,
+                _is_access_guard_error(exc),
+            )
+            raise
 
     def _wait_search_slot(self) -> None:
         if self.search_min_interval <= 0:
@@ -202,8 +186,14 @@ def normalize_topic(item: dict[str, Any]) -> dict[str, Any]:
         "author_id": str(item.get("userId")) if item.get("userId") is not None else None,
         "author_name": item.get("userName") or item.get("authorName") or item.get("lastPostUser"),
         "created_at": item.get("time") or item.get("createTime"),
-        "raw": item,
     }
+
+
+def _is_access_guard_error(exc: CC98APIError) -> bool:
+    if exc.status_code in {403, 429}:
+        return True
+    body = (exc.body or "").lower()
+    return any(marker in body for marker in ("反爬", "爬虫", "too many requests", "rate limit", "last_search"))
 
 
 cc98_client = CC98ServiceClient()

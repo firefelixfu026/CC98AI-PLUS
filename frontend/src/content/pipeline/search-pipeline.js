@@ -9,6 +9,7 @@ import { readReplies } from './reply-reader.js';
 import { generateSummary } from './summarizer.js';
 import { getSearchBudget } from '../lib/storage.js';
 import { AppError, ERROR_TYPES } from '../lib/errors.js';
+import { createRequestBudget } from '../lib/request-budget.js';
 
 // 各阶段进度区间（总 100%）
 const STAGES = [
@@ -41,6 +42,7 @@ export function throwIfAborted(signal) {
 export async function runSearchPipeline(query, onProgress, opts = {}) {
   const signal = opts.signal || null;
   const budget = await getSearchBudget();
+  const requestBudget = createRequestBudget();
   const report = { keywords: [], topics: [], summary: '' };
 
   const emit = (key, fraction) => {
@@ -63,7 +65,7 @@ export async function runSearchPipeline(query, onProgress, opts = {}) {
   emit('search', 0);
   const searched = await searchAndDeduplicate(keywords, budget.searchLimitPerKeyword, (done, total) => {
     emit('search', total ? done / total : 0);
-  }, signal);
+  }, signal, requestBudget);
   throwIfAborted(signal);
   if (!searched.length) {
     throw new AppError(ERROR_TYPES.NO_RESULTS, '没有搜到相关帖子，换个关键词试试');
@@ -79,7 +81,7 @@ export async function runSearchPipeline(query, onProgress, opts = {}) {
   emit('read', 0);
   const enriched = await readReplies(topTopics, budget, (done, total) => {
     emit('read', total ? done / total : 0);
-  }, signal);
+  }, signal, requestBudget);
   throwIfAborted(signal);
   emit('read', 1);
 

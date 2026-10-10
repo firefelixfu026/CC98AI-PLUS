@@ -9,7 +9,7 @@
 //   ts 是最后一次更新时间：发起搜索的标签页若被关掉，其他标签页
 //   靠 ts 判断状态已经不新鲜（STALE_MS），避免永远卡在进度条。
 // ============================================================
-import { STORAGE_KEYS } from '../../shared/constants.js';
+import { SEARCH_COOLDOWN_MS, STORAGE_KEYS } from '../../shared/constants.js';
 
 export const STALE_MS = 25000; // 超过这么久没更新，认为发起方已消失
 
@@ -20,6 +20,20 @@ export async function readSearchState() {
   } catch (e) {
     return null;
   }
+}
+
+// 返回还需等待的毫秒数；返回 0 时同时占用本轮搜索名额。
+export async function claimSearchSlot() {
+  try {
+    const obj = await chrome.storage.local.get(STORAGE_KEYS.LAST_SEARCH_STARTED_AT);
+    const lastStartedAt = Number(obj && obj[STORAGE_KEYS.LAST_SEARCH_STARTED_AT]) || 0;
+    const remaining = SEARCH_COOLDOWN_MS - (Date.now() - lastStartedAt);
+    if (remaining > 0) return remaining;
+    await chrome.storage.local.set({ [STORAGE_KEYS.LAST_SEARCH_STARTED_AT]: Date.now() });
+  } catch (e) {
+    // 存储不可用时不阻断搜索；请求预算仍会限制单轮访问量。
+  }
+  return 0;
 }
 
 async function write(state) {

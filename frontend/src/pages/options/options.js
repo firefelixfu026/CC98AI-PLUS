@@ -2,9 +2,10 @@
 // 设置页：LLM 配置 + 搜索预算 + 订阅通知渠道
 // 扩展页拥有 host_permissions，可直接 fetch 跨域做连接测试
 // ============================================================
-import { LLM_DEFAULTS, SEARCH_BUDGET_DEFAULTS, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
+import { LLM_DEFAULTS, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
 import { startStoredThemePaletteSync } from '../../shared/theme-palette.js';
 import { listChannels, saveChannel, testChannel } from '../../content/lib/backend-api.js';
+import { getSearchBudget } from '../../content/lib/storage.js';
 
 startStoredThemePaletteSync();
 
@@ -46,10 +47,9 @@ function bindRange(id) {
 
 async function load() {
   const llm = (await chrome.storage.local.get(STORAGE_KEYS.LLM))[STORAGE_KEYS.LLM] || {};
-  const budget = (await chrome.storage.local.get(STORAGE_KEYS.BUDGET))[STORAGE_KEYS.BUDGET] || {};
 
   const L = { ...LLM_DEFAULTS, ...llm };
-  const B = { ...SEARCH_BUDGET_DEFAULTS, ...budget };
+  const B = await getSearchBudget();
   $('provider').value = L.provider;
   $('baseUrl').value = L.baseUrl;
   $('model').value = L.model;

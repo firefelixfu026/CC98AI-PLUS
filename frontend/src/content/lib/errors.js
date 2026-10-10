@@ -7,6 +7,8 @@ export const ERROR_TYPES = {
   CC98_NOT_LOGGED_IN: 'cc98_not_logged_in',
   CC98_TOKEN_EXPIRED: 'cc98_token_expired',
   CC98_API_FAILED: 'cc98_api_failed',
+  CC98_ACCESS_GUARD: 'cc98_access_guard',
+  SEARCH_REQUEST_LIMIT: 'search_request_limit',
   LLM_API_KEY_INVALID: 'llm_api_key_invalid',
   LLM_QUOTA_EXHAUSTED: 'llm_quota_exhausted',
   LLM_NETWORK: 'llm_network',
@@ -92,6 +94,10 @@ function hintFor(type) {
       return '请刷新 cc98.org 页面重新登录，或在设置里检查登录状态。';
     case ERROR_TYPES.CC98_API_FAILED:
       return '请确认已连接校园网 / RVPN，并已在 cc98.org 登录。';
+    case ERROR_TYPES.CC98_ACCESS_GUARD:
+      return '本轮搜索已立即停止，插件不会自动重试。请稍后再使用，并留意 CC98 页面或账号提示。';
+    case ERROR_TYPES.SEARCH_REQUEST_LIMIT:
+      return '本轮搜索已达到 20 次 CC98 请求上限。请缩小问题范围，稍后重新搜索。';
     case ERROR_TYPES.LLM_API_KEY_INVALID:
       return '请到插件设置页检查 API Key 和 Base URL。';
     case ERROR_TYPES.LLM_QUOTA_EXHAUSTED:

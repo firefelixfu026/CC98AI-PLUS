@@ -6,15 +6,27 @@
 export const CC98_API_BASE = 'https://api.cc98.org';
 export const CC98_WEB_BASE = 'https://www.cc98.org';
 export const CC98_SEARCH_MIN_INTERVAL_MS = 1200; // 搜索限速
-export const CC98_SEARCH_RETRY_ATTEMPTS = 2;
+export const SEARCH_COOLDOWN_MS = 45_000; // 两次完整搜索之间的冷却时间
+export const SEARCH_REQUEST_LIMIT = 20;   // 一轮搜索最多访问 CC98 的次数
+export const SEARCH_CACHE_TTL_MS = 5 * 60_000;
+export const TOPIC_CACHE_TTL_MS = 10 * 60_000;
 
 // 搜索预算默认值（可在设置页调）
 export const SEARCH_BUDGET_DEFAULTS = {
   keywordCount: 4,        // 拆分多少个搜索关键词
   searchLimitPerKeyword: 20, // 每个关键词最多搜多少条
-  topicLimit: 10,         // 最终选取多少个主题
-  maxRepliesPerTopic: 30, // 每个主题最多读多少楼
+  topicLimit: 5,          // 最终选取多少个主题
+  maxRepliesPerTopic: 20, // 每个主题最多读多少楼
   maxCharsPerReply: 1000, // 每楼最多截取多少字
+};
+
+// 即使旧版本保存过更大的预算，运行时也会压回此范围。
+export const SEARCH_BUDGET_LIMITS = {
+  keywordCount: { min: 1, max: 4 },
+  searchLimitPerKeyword: { min: 5, max: 20 },
+  topicLimit: { min: 3, max: 5 },
+  maxRepliesPerTopic: { min: 5, max: 20 },
+  maxCharsPerReply: { min: 200, max: 2000 },
 };
 
 // LLM 默认配置
@@ -51,6 +63,7 @@ export const STORAGE_KEYS = {
   USER_EMAIL: 'userEmail',
   AUTH_TOKEN: 'authToken',
   LAST_SEARCH: 'lastSearch',   // 上次搜索结果（跨标签页 / 刷新后恢复）
+  LAST_SEARCH_STARTED_AT: 'lastSearchStartedAt',
   NOTIFY_INTERVAL: 'notifyIntervalMinutes',
   NOTIFICATION_CACHE: 'notificationListCache',
   THEME_PALETTE: 'cc98ThemePalette',

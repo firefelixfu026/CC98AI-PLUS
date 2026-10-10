@@ -208,7 +208,7 @@ cc98_watch:last_topic_id
 ### 8.1 首次运行
 
 - 默认 `WATCH_INITIAL_CURSOR_MODE=baseline`：将当前新帖列表头设为游标，不通知历史帖子。
-- `backfill`：在 `MAX_NEW_POST_PAGES` 范围内处理历史帖子，只应在明确需要时使用。
+- `backfill`：仅限本地开发演示；生产环境会拒绝该配置，避免首次启动回溯历史帖子。
 - `CC98_INITIAL_TOPIC_ID` 仅在数据库没有游标时用于恢复已知高水位。
 
 ### 8.2 正常扫描
@@ -303,7 +303,6 @@ CC98_SERVICE_REFRESH_TOKEN=
 CC98_TIMEOUT=10
 CC98_TRUST_ENV=false
 CC98_NEW_POSTS_MIN_INTERVAL_SECONDS=2
-CC98_NEW_POSTS_RETRY_ATTEMPTS=2
 NEW_POST_PAGE_SIZE=20
 MAX_NEW_POST_PAGES=10
 CC98_INITIAL_TOPIC_ID=

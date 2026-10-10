@@ -39,9 +39,9 @@ def _item_expressions(item: NotificationItem) -> list[str]:
             value = reason[len(prefix) :].strip()
             if not value:
                 return []
-            if prefix == "命中订阅表达式：":
-                return [part.strip() for part in value.split("；") if part.strip()]
-            return [value]
+            # 旧版通知只把多条表达式合并保存在 matched_reason 中。
+            # 统一拆分，确保升级后待发送的旧通知也能按表达式分组。
+            return list(dict.fromkeys(part.strip() for part in value.split("；") if part.strip()))
     return []
 
 
@@ -91,7 +91,7 @@ def build_batch_notification_text(items: list[NotificationItem]) -> str:
         "",
     ]
     for expression, matched_items in groups.items():
-        lines.append(f"【表达式：{expression}】")
+        lines.append(f"【订阅表达式：{expression}｜{len(matched_items)} 个帖子】")
         for index, item in enumerate(matched_items, start=1):
             lines.append(f"{index}. {item.get('title') or '未命名帖子'}")
             lines.append(f"   链接：{item.get('url') or ''}")

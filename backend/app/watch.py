@@ -110,7 +110,7 @@ def _topic_to_model(topic: dict[str, Any]) -> CC98Topic:
         author_name=str(topic.get("author_name")) if topic.get("author_name") is not None else None,
         created_at=created_at,
         fetched_at=utc_now(),
-        raw_json=json_dumps(topic.get("raw") or topic),
+        raw_json=None,
     )
 
 
@@ -131,7 +131,7 @@ def _upsert_topics(db: Session, topics: Iterable[dict[str, Any]]) -> None:
             existing.author_name = model.author_name
             existing.created_at = model.created_at
             existing.fetched_at = model.fetched_at
-            existing.raw_json = model.raw_json
+            existing.raw_json = None
 
 
 def fetch_new_topics(limit: int = 20) -> tuple[list[dict[str, Any]], str]:
@@ -180,7 +180,10 @@ def _collect_new_topics(old_cursor: str | None) -> TopicScan:
 
     # With no persisted high-water mark, use the server's current list head as a
     # baseline by default. A bounded backfill remains available for local demos.
-    if old_cursor is None and os.getenv("WATCH_INITIAL_CURSOR_MODE", "baseline").lower() != "backfill":
+    initial_mode = os.getenv("WATCH_INITIAL_CURSOR_MODE", "baseline").lower()
+    if old_cursor is None and initial_mode == "backfill" and _is_production():
+        raise RuntimeError("WATCH_INITIAL_CURSOR_MODE=backfill is not allowed in production")
+    if old_cursor is None and initial_mode != "backfill":
         logger.info("scan cursor baseline created topic_id=%s; historical notifications skipped", new_cursor)
         return TopicScan(
             source,
