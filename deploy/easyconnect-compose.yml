@@ -1,0 +1,22 @@
+services:
+  easyconnect:
+    image: hagb/docker-easyconnect:cli
+    container_name: cc98aiplus-easyconnect
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:8888:8888"
+    environment:
+      EC_VER: ${EC_VER:-7.6.7}
+      CLI_OPTS: >-
+        -d ${VPN_SERVER:-rvpn.zju.edu.cn:443}
+        -u ${VPN_USERNAME:?set VPN_USERNAME in deploy/easyconnect.env}
+        -p ${VPN_PASSWORD:?set VPN_PASSWORD in deploy/easyconnect.env}
+      PING_ADDR_URL: ${PING_ADDR_URL:-https://api.cc98.org}
+      PING_INTERVAL: ${PING_INTERVAL:-300}

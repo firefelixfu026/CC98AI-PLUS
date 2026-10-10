@@ -33,7 +33,7 @@ export const LLM_DEFAULTS = {
 export const ANTHROPIC_MAX_TOKENS_FALLBACK = 32000;
 
 // 后端（Watch）默认地址
-export const BACKEND_DEFAULT_BASE = 'http://127.0.0.1:8000';
+export const BACKEND_DEFAULT_BASE = 'https://felixfu.xyz/cc98ai';
 // 订阅配额上限兜底值（后端暂未通过 /health 暴露，先硬编码，读到了以后端为准）
 export const SUBSCRIPTION_LIMIT_FALLBACK = 10;
 

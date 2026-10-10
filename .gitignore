@@ -11,5 +11,6 @@ __pycache__/
 node_modules/
 dist/
 build/
+deploy/easyconnect.env
 .DS_Store
 

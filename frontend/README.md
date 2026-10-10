@@ -138,7 +138,7 @@ Provider 保持「**OpenAI 兼容**」——上面四家都走这个协议。只
 [`docs/deployment.md`](../docs/deployment.md)。
 
 AI 搜索不依赖后端；订阅、通知和邮箱登录需要在设置中填写部署后的
-Watch 后端地址。开发环境默认地址为 `http://127.0.0.1:8000`。
+Watch 后端地址。正式服务默认地址为 `https://felixfu.xyz/cc98ai`，本地开发可改为 `http://127.0.0.1:8000`。
 
 
 ---

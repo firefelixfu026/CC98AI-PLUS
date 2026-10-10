@@ -40,6 +40,9 @@ function renderLogin(body) {
         <input id="cc98-login-code" class="cc98-input" type="text" placeholder="6 位验证码" />
         <button id="cc98-login-verify" class="cc98-primary" type="button">验证登录</button>
       </div>
+    </div>
+    <div class="cc98-panel-actions" style="margin-top:12px">
+      <button id="cc98-login-open-options" class="cc98-secondary" type="button">打开完整设置页</button>
     </div>`;
 
   const emailEl = body.querySelector('#cc98-login-email');
@@ -47,6 +50,10 @@ function renderLogin(body) {
   const step2 = body.querySelector('#cc98-login-step2');
   const codeEl = body.querySelector('#cc98-login-code');
   const verifyBtn = body.querySelector('#cc98-login-verify');
+
+  body.querySelector('#cc98-login-open-options').addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+  });
 
   sendBtn.addEventListener('click', async () => {
     const email = emailEl.value.trim();
