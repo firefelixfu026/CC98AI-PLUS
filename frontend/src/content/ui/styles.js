@@ -99,7 +99,8 @@ const CSS = `
 #cc98-ai-panel{color-scheme:light;position:fixed;bottom:84px;right:24px;width:480px;max-width:94vw;max-height:640px;background:var(--cc98-bg);border-radius:var(--cc98-rad);box-shadow:var(--cc98-sh);z-index:99989;display:none;flex-direction:column;overflow:hidden;border:1px solid var(--cc98-bd);font-family:var(--cc98-font);color:var(--cc98-txt);line-height:1.5}
 #cc98-ai-panel.open{display:flex}
 #cc98-ai-panel *{box-sizing:border-box}
-.cc98-panel-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:var(--cc98-bg-sub);border-bottom:1px solid var(--cc98-bd)}
+.cc98-panel-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:var(--cc98-bg-sub);border-bottom:1px solid var(--cc98-bd);cursor:grab;touch-action:none;user-select:none}
+.cc98-panel-head:active,#cc98-ai-panel.dragging .cc98-panel-head{cursor:grabbing}
 .cc98-panel-title{font-size:14px;font-weight:650;color:var(--cc98-txt);letter-spacing:.2px}
 .cc98-panel-close{background:none;border:none;color:var(--cc98-txt2);font-size:14px;line-height:1;cursor:pointer;padding:5px 7px;border-radius:7px;transition:background .15s,color .15s}
 .cc98-panel-close:hover{background:var(--cc98-pri-soft);color:var(--cc98-txt)}
@@ -119,7 +120,7 @@ const CSS = `
 .cc98-panel-resize{position:absolute;bottom:0;right:0;width:20px;height:20px;cursor:nwse-resize;z-index:20;touch-action:none;user-select:none}
 .cc98-panel-resize::after{content:'';position:absolute;right:5px;bottom:5px;width:8px;height:8px;border-right:2px solid var(--cc98-txt3);border-bottom:2px solid var(--cc98-txt3);border-radius:0 0 2px 0;opacity:.7;transition:opacity .15s}
 .cc98-panel-resize:hover::after{opacity:1;border-color:var(--cc98-pri)}
-#cc98-ai-panel.resizing{user-select:none}
+#cc98-ai-panel.resizing,#cc98-ai-panel.dragging{user-select:none}
 
 /* ============ 表单 ============ */
 .cc98-form-row{display:flex;gap:8px;margin-bottom:14px}

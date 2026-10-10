@@ -1,6 +1,6 @@
 // ============================================================
 // 后台 Service Worker：通用 fetch 代理 + 未读徽章轮询
-//   所有跨域请求（CC98 API / LLM / Watch 后端）经这里转发，绕过 CORS
+//   所有跨域请求（CC98 API / LLM / 订阅服务）经这里转发，绕过 CORS
 // ============================================================
 import { MSG, STORAGE_KEYS, BACKEND_DEFAULT_BASE } from '../shared/constants.js';
 
@@ -74,17 +74,20 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 async function refreshBadge() {
-  const stored = await chrome.storage.local.get([STORAGE_KEYS.USER_EMAIL, STORAGE_KEYS.BACKEND_BASE]);
+  const stored = await chrome.storage.local.get([STORAGE_KEYS.USER_EMAIL, STORAGE_KEYS.AUTH_TOKEN]);
   const email = stored[STORAGE_KEYS.USER_EMAIL];
-  const base = (stored[STORAGE_KEYS.BACKEND_BASE] || BACKEND_DEFAULT_BASE).replace(/\/+$/, '');
+  const token = stored[STORAGE_KEYS.AUTH_TOKEN];
+  const base = BACKEND_DEFAULT_BASE.replace(/\/+$/, '');
 
-  if (!email) {
+  if (!email || !token) {
     chrome.action.setBadgeText({ text: '' });
     return;
   }
 
   try {
-    const res = await fetch(`${base}/api/v1/notifications?user_id=${encodeURIComponent(email)}`);
+    const res = await fetch(`${base}/api/v1/notifications?user_id=${encodeURIComponent(email)}`, {
+      headers: { Authorization: 'Bearer ' + token },
+    });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const list = await res.json();
     const unread = Array.isArray(list) ? list.filter((n) => !n.is_read).length : 0;

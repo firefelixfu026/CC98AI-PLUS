@@ -59,12 +59,22 @@
     .actions { display:flex; gap:10px; align-items:center; }
     #status { font-size:13px; font-weight:500; }
     .hint { font-size:12px; color:var(--txt2); line-height:1.65; margin-top:6px; }
+    .account-line, .channel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .account-line { padding:11px 13px; border:1px solid var(--bd); border-radius:9px; font-size:13px; margin-bottom:16px; }
+    .channel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .channel { border:1px solid var(--bd); border-radius:10px; padding:16px; }
+    .channel-head { margin-bottom:14px; }
+    .channel-title { font-size:13px; font-weight:650; }
+    .toggle { display:flex; align-items:center; gap:6px; color:var(--txt2); font-size:12px; }
+    .toggle input { accent-color:var(--pri); }
+    #channelStatus { margin-top:12px; font-size:12px; color:var(--txt2); }
+    @media (max-width:680px) { .channel-grid, .row { grid-template-columns:1fr; display:grid; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>CC98 AI+ 设置</h1>
-    <div class="sub">配置 AI 搜索用的 LLM、搜索预算，以及订阅提醒用的 Watch 后端地址。</div>
+    <div class="sub">配置 AI 搜索、搜索范围和订阅提醒方式。AI Key 只保存在当前浏览器中。</div>
 
     <div class="card">
       <h2>LLM 配置（AI 搜索用）</h2>
@@ -135,12 +145,57 @@
     </div>
 
     <div class="card">
-      <h2>Watch 后端（订阅提醒用）</h2>
-      <div class="field">
-        <label>后端地址</label>
-        <input id="backendBase" type="text" placeholder="https://felixfu.xyz/cc98ai" />
-        <div class="hint">正式服务默认 https://felixfu.xyz/cc98ai；本地开发可改为 http://127.0.0.1:8000。</div>
+      <h2>订阅提醒</h2>
+      <p class="card-sub">管理提醒间隔以及钉钉、邮箱通知渠道。新帖由服务器自动检查。</p>
+      <div class="account-line">
+        <span>登录账号</span>
+        <strong id="loginEmail">读取中…</strong>
       </div>
+      <div class="field">
+        <label>通知间隔（合并发送）</label>
+        <select id="notifyInterval"></select>
+        <div class="hint">命中的新帖会先汇总，到所选间隔后合并发送，避免频繁打扰。</div>
+      </div>
+      <div class="channel-grid">
+        <section class="channel">
+          <div class="channel-head">
+            <span class="channel-title">钉钉机器人</span>
+            <label class="toggle"><input id="dingEnabled" type="checkbox" />启用</label>
+          </div>
+          <div class="field">
+            <label>Webhook 地址</label>
+            <input id="dingWebhook" type="text" placeholder="https://oapi.dingtalk.com/robot/send?access_token=…" />
+          </div>
+          <div class="field">
+            <label>加签 Secret</label>
+            <input id="dingSecret" type="password" placeholder="SEC…" />
+            <div class="hint" id="dingSecretHint">保存后不会再次完整显示。</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" type="button" data-channel-save="dingtalk">保存</button>
+            <button class="btn btn-ghost" type="button" data-channel-test="dingtalk">测试</button>
+          </div>
+        </section>
+        <section class="channel">
+          <div class="channel-head">
+            <span class="channel-title">邮箱通知</span>
+            <label class="toggle"><input id="mailEnabled" type="checkbox" />启用</label>
+          </div>
+          <div class="field">
+            <label>接收邮箱</label>
+            <input id="mailTo" type="email" placeholder="student@zju.edu.cn" />
+          </div>
+          <div class="field">
+            <label>主题前缀</label>
+            <input id="mailPrefix" type="text" placeholder="CC98 订阅提醒" />
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" type="button" data-channel-save="email">保存</button>
+            <button class="btn btn-ghost" type="button" data-channel-test="email">测试</button>
+          </div>
+        </section>
+      </div>
+      <div id="channelStatus"></div>
     </div>
 
     <div class="actions">

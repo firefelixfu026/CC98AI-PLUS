@@ -107,7 +107,7 @@ function hintFor(type) {
     case ERROR_TYPES.NO_RESULTS:
       return '换个更宽泛的关键词试试。';
     case ERROR_TYPES.BACKEND_OFFLINE:
-      return '请确认后端已启动，或在设置页检查后端地址。';
+      return '订阅服务暂时不可用，请稍后再试。';
     case ERROR_TYPES.NOT_LOGGED_IN_BACKEND:
       return '请先用浙大邮箱登录。';
     default:

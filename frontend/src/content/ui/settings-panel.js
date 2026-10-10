@@ -3,7 +3,7 @@
 // ============================================================
 import { listChannels, saveChannel, testChannel, getHealth } from '../lib/backend-api.js';
 import { isLoggedIn, getEmail, logout, sendCode, verifyCode } from '../lib/auth.js';
-import { getBackendBase, getLocal, setLocal } from '../lib/storage.js';
+import { getLocal, setLocal } from '../lib/storage.js';
 import { MSG, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
 import { esc, toast } from '../lib/html-utils.js';
 
@@ -120,7 +120,6 @@ function renderLogin(body) {
 // ---------- 已登录：设置表单 ----------
 async function draw(body) {
   const email = await getEmail();
-  const backendBase = await getBackendBase();
   const storedInterval = (await getLocal(STORAGE_KEYS.NOTIFY_INTERVAL)) || 60;
 
   let channels = [];
@@ -213,8 +212,8 @@ async function draw(body) {
     </div>
 
     <div class="cc98-setting-field" style="margin-bottom:0">
-      <label>后端状态</label>
-      <div class="cc98-setting-help" id="cc98-backend-status">后端地址：${esc(backendBase)} · 检测中…</div>
+      <label>订阅服务</label>
+      <div class="cc98-setting-help" id="cc98-backend-status">检测中…</div>
     </div>`;
 
   // 后端状态
@@ -222,11 +221,11 @@ async function draw(body) {
     .then((h) => {
       const st = body.querySelector('#cc98-backend-status');
       const scan = h && h.components && h.components.scan_interval_minutes;
-      st.textContent = `后端地址：${backendBase} · 在线 · 扫描间隔 ${scan} 分钟`;
+      st.textContent = `服务在线 · 每 ${scan} 分钟自动检查一次新帖`;
     })
     .catch(() => {
       const st = body.querySelector('#cc98-backend-status');
-      st.textContent = `后端地址：${backendBase} · 离线（请确认已启动）`;
+      st.textContent = '服务暂时不可用，请稍后重试';
     });
 
   // 退出登录

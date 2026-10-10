@@ -36,7 +36,7 @@ export async function getSearchBudget() {
 }
 
 export async function getBackendBase() {
-  return (await getLocal(STORAGE_KEYS.BACKEND_BASE)) || BACKEND_DEFAULT_BASE;
+  return BACKEND_DEFAULT_BASE;
 }
 
 export async function getUserEmail() {

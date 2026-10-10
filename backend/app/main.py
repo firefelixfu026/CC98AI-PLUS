@@ -404,14 +404,14 @@ def test_channel(
     current_user: models.User = Depends(_require_current_user),
 ) -> dict[str, Any]:
     _ = current_user
-    result = send_notification(payload.provider, payload.config, "CC98 AI Watch 测试通知", "https://www.cc98.org", "如果你收到这条消息，说明通知通道可用")
+    result = send_notification(payload.provider, payload.config, "CC98 AI+ 测试通知", "https://www.cc98.org", "如果你收到这条消息，说明通知渠道可用")
     if not result.ok:
         raise HTTPException(status_code=400, detail=result.error or "通知发送失败")
     return {"status": "ok"}
 
 
 def _record_notification_list_success(db: Session, user_id: str) -> None:
-    limit_seconds = max(0, int(os.getenv("NOTIFICATION_READ_RATE_LIMIT_SECONDS", "60")))
+    limit_seconds = max(0, int(os.getenv("NOTIFICATION_READ_RATE_LIMIT_SECONDS", "0")))
     if limit_seconds == 0:
         return
     now = utc_now()

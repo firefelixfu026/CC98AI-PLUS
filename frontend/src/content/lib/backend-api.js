@@ -1,6 +1,5 @@
 // ============================================================
-// Watch 后端 API 客户端（订阅 / 通知 / 渠道 / 扫描 / 认证）
-//   后端以字符串 user_id（浙大邮箱）区分用户，JWT 暂未校验
+// 订阅服务 API 客户端（订阅 / 通知 / 渠道 / 扫描 / 认证）
 // ============================================================
 import { getBackendBase, getUserEmail, getLocal } from './storage.js';
 import { fetchProxy } from './net.js';
@@ -32,7 +31,7 @@ async function request(path, { method = 'GET', body } = {}) {
   } catch (e) {
     // fetchProxy 已把非 2xx 转成带 .status 的 Error；无 .status 说明网络/SW 挂了
     if (!e || !e.status) {
-      throw new AppError(ERROR_TYPES.BACKEND_OFFLINE, '无法连接 Watch 后端', (e && e.message) || '');
+      throw new AppError(ERROR_TYPES.BACKEND_OFFLINE, '无法连接订阅服务', (e && e.message) || '');
     }
     throw new AppError(ERROR_TYPES.BACKEND_ERROR, (e && e.message) || '后端返回错误', { status: e.status, detail: e.detail });
   }
@@ -81,10 +80,6 @@ export async function deleteSubscription(id) {
 // ---------- 通知 ----------
 export async function listNotifications() {
   return request('/api/v1/notifications?' + (await userIdQuery()));
-}
-
-export async function triggerScan() {
-  return request('/api/v1/tasks/scan', { method: 'POST', body: {} });
 }
 
 // ---------- 通知渠道 ----------

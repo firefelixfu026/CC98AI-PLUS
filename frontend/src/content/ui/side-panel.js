@@ -6,6 +6,7 @@
 
 const PANEL_ID = 'cc98-ai-panel';
 const PANEL_SIZE_KEY = 'panelSize'; // 面板宽高，存 storage.local，刷新后保留
+const PANEL_POSITION_KEY = 'panelPosition';
 
 const TABS = [
   { key: 'search', label: '搜索' },
@@ -16,6 +17,18 @@ const TABS = [
 
 let singleton = null;
 let globalListenersBound = false;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function clampPanelToViewport(panel) {
+  const rect = panel.getBoundingClientRect();
+  panel.style.left = Math.round(clamp(rect.left, 8, Math.max(8, window.innerWidth - rect.width - 8))) + 'px';
+  panel.style.top = Math.round(clamp(rect.top, 8, Math.max(8, window.innerHeight - rect.height - 8))) + 'px';
+  panel.style.right = 'auto';
+  panel.style.bottom = 'auto';
+}
 
 // 把面板摆到按钮旁边（默认上方、右对齐；上方放不下就放下方），并夹在视口内
 function positionPanelNearButton(panel) {
@@ -78,7 +91,60 @@ function makeResizable(panel, handle) {
     try {
       chrome.storage.local.set({ [PANEL_SIZE_KEY]: { width: panel.offsetWidth, height: panel.offsetHeight } }).catch(() => {});
     } catch (_) {}
+    if (panel.dataset.userPositioned === '1') clampPanelToViewport(panel);
   }
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+
+// 标题栏拖动面板；关闭按钮不参与拖动，位置会跨页面保存。
+function makeDraggable(panel, handle) {
+  let dragging = false;
+  let moved = false;
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('.cc98-panel-close')) return;
+    e.preventDefault();
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    panel.style.left = startLeft + 'px';
+    panel.style.top = startTop + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    panel.classList.add('dragging');
+    try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+    panel.style.left = clamp(startLeft + dx, 8, Math.max(8, window.innerWidth - panel.offsetWidth - 8)) + 'px';
+    panel.style.top = clamp(startTop + dy, 8, Math.max(8, window.innerHeight - panel.offsetHeight - 8)) + 'px';
+  });
+
+  function end(e) {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove('dragging');
+    try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (!moved) return;
+    panel.dataset.userPositioned = '1';
+    const rect = panel.getBoundingClientRect();
+    try {
+      chrome.storage.local.set({
+        [PANEL_POSITION_KEY]: { left: rect.left, top: rect.top },
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
   handle.addEventListener('pointerup', end);
   handle.addEventListener('pointercancel', end);
 }
@@ -98,6 +164,21 @@ function applyPanelSize(panel) {
   } catch (e) { /* 静默 */ }
 }
 
+function applyPanelPosition(panel) {
+  try {
+    chrome.storage.local.get(PANEL_POSITION_KEY).then((o) => {
+      const pos = o && o[PANEL_POSITION_KEY];
+      if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') return;
+      panel.dataset.userPositioned = '1';
+      panel.style.left = pos.left + 'px';
+      panel.style.top = pos.top + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      clampPanelToViewport(panel);
+    }).catch(() => {});
+  } catch (_) {}
+}
+
 export function createSidePanel({ renderers }) {
   if (singleton && document.getElementById(PANEL_ID)) return singleton;
 
@@ -114,7 +195,9 @@ export function createSidePanel({ renderers }) {
   document.body.appendChild(panel);
 
   makeResizable(panel, panel.querySelector('.cc98-panel-resize'));
+  makeDraggable(panel, panel.querySelector('.cc98-panel-head'));
   applyPanelSize(panel);
+  applyPanelPosition(panel);
 
   const tabsEl = panel.querySelector('.cc98-panel-tabs');
   const bodyEl = panel.querySelector('.cc98-panel-body');
@@ -149,7 +232,10 @@ export function createSidePanel({ renderers }) {
   function open() {
     panel.classList.add('open');
     // 不重渲染当前 Tab：上次结果原样保留，关闭再打开不丢
-    requestAnimationFrame(() => positionPanelNearButton(panel));
+    requestAnimationFrame(() => {
+      if (panel.dataset.userPositioned === '1') clampPanelToViewport(panel);
+      else positionPanelNearButton(panel);
+    });
   }
   function close() {
     panel.classList.remove('open');
@@ -186,10 +272,12 @@ function bindGlobalListeners() {
     p.classList.remove('open');
   });
 
-  // 按钮拖动 / 窗口缩放时，面板若开着就跟随按钮
+  // 未手动移动的面板跟随悬浮按钮；手动移动后只保证仍位于视口内。
   const follow = () => {
     const p = document.getElementById(PANEL_ID);
-    if (p && p.classList.contains('open')) positionPanelNearButton(p);
+    if (!p || !p.classList.contains('open')) return;
+    if (p.dataset.userPositioned === '1') clampPanelToViewport(p);
+    else positionPanelNearButton(p);
   };
   window.addEventListener('cc98-fb-moved', follow);
   window.addEventListener('resize', follow);
