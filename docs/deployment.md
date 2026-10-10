@@ -22,7 +22,7 @@
 mkdir -p data
 docker compose -f deploy/docker-compose.yml up -d --build
 docker compose -f deploy/docker-compose.yml ps
-curl http://127.0.0.1:8000/api/v1/health
+curl http://127.0.0.1:18000/api/v1/health
 ```
 
 SQLite 数据保存在宿主机的 `data/` 目录中。不要把这个目录提交到 Git。
