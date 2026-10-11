@@ -83,4 +83,5 @@ export const MSG = {
   FETCH: 'FETCH',                 // 通用网络代理
   REFRESH_BADGE: 'REFRESH_BADGE', // 刷新未读徽章
   OPEN_OPTIONS: 'OPEN_OPTIONS',   // 由后台打开完整设置页
+  OPEN_SEARCH: 'OPEN_SEARCH',     // 由后台打开完整搜索页
 };

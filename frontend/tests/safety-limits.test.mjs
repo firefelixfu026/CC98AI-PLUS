@@ -44,18 +44,35 @@ assert.equal(shouldPauseAfterTopic(10, 20), true);
 assert.equal(shouldPauseAfterTopic(20, 20), false);
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
-assert.equal(manifest.version, '0.1.10');
-assert.ok(
+assert.equal(manifest.version, '0.1.11');
+assert.equal(
   manifest.web_accessible_resources.some((entry) => entry.resources.includes('src/pages/search/search.html')),
-  'the full search page must be directly openable from the CC98 content page'
+  false,
+  'the search page must not be exposed for direct navigation from a web page'
 );
 const searchPanelSource = fs.readFileSync(
   new URL('../src/content/ui/search-panel.js', import.meta.url),
   'utf8'
 );
-assert.match(searchPanelSource, /<a class="cc98-secondary cc98-full-page-link"/);
-assert.match(searchPanelSource, /target="_blank"/);
-assert.doesNotMatch(searchPanelSource, /OPEN_SEARCH|sendMessage/);
+const serviceWorkerSource = fs.readFileSync(
+  new URL('../src/background/service-worker.js', import.meta.url),
+  'utf8'
+);
+const settingsPanelSource = fs.readFileSync(
+  new URL('../src/content/ui/settings-panel.js', import.meta.url),
+  'utf8'
+);
+const optionsSource = fs.readFileSync(
+  new URL('../src/pages/options/options.js', import.meta.url),
+  'utf8'
+);
+assert.match(searchPanelSource, /type: MSG\.OPEN_SEARCH/);
+assert.match(searchPanelSource, /id="cc98-search-full"/);
+assert.match(serviceWorkerSource, /msg\.type === MSG\.OPEN_SEARCH/);
+assert.match(settingsPanelSource, /邮箱配置已保存，但通知未启用/);
+assert.match(optionsSource, /此前通知不会补发/);
+assert.match(serviceWorkerSource, /chrome\.tabs\.create\(/);
+assert.match(serviceWorkerSource, /chrome\.runtime\.lastError/);
 
 const token = `${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(40)}`;
 globalThis.location = { hostname: 'www.cc98.org' };

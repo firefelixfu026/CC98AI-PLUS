@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CC98 AI+",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "CC98 论坛 AI 搜索总结 + 订阅新帖提醒（钉钉 / 邮箱）。CC98 Token 和 LLM API Key 只在本机使用，不上传。",
   "permissions": ["storage", "alarms"],
   "host_permissions": [
@@ -37,7 +37,6 @@
         "src/content/lib/*.js",
         "src/content/pipeline/*.js",
         "src/content/ui/*.js",
-        "src/pages/search/search.html",
         "src/shared/*.js",
         "vendor/*.js"
       ],

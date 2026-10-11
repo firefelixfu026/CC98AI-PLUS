@@ -67,6 +67,8 @@
     .channel-title { font-size:13px; font-weight:650; }
     .toggle { display:flex; align-items:center; gap:6px; color:var(--txt2); font-size:12px; }
     .toggle input { accent-color:var(--pri); }
+    .channel-state { margin-top:12px; padding:9px 11px; border-radius:8px; background:var(--err-bg); color:var(--err); border:1px solid var(--err-bd); }
+    .channel-state.enabled { background:color-mix(in srgb, var(--ok) 10%, transparent); color:var(--ok); border-color:color-mix(in srgb, var(--ok) 35%, transparent); }
     #channelStatus { margin-top:12px; font-size:12px; color:var(--txt2); }
     @media (max-width:680px) { .channel-grid, .row { grid-template-columns:1fr; display:grid; } }
   </style>
@@ -195,6 +197,7 @@
             <button class="btn btn-primary" type="button" data-channel-save="email">保存</button>
             <button class="btn btn-ghost" type="button" data-channel-test="email">测试</button>
           </div>
+          <div class="hint channel-state" id="mailStateHint"></div>
         </section>
       </div>
       <div id="channelStatus"></div>

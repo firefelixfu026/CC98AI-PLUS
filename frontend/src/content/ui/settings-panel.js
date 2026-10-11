@@ -130,6 +130,7 @@ async function draw(body) {
   }
   const ding = channels.find((c) => c.provider === 'dingtalk') || null;
   const mail = channels.find((c) => c.provider === 'email') || null;
+  const mailEnabled = !!(mail && mail.enabled);
 
   // 共享通知间隔：优先取已存渠道的值
   const currentInterval = ding ? ding.notify_interval_minutes : (mail ? mail.notify_interval_minutes : storedInterval);
@@ -208,6 +209,11 @@ async function draw(body) {
           <button class="cc98-primary" type="button" data-save="email">保存</button>
           <button class="cc98-secondary" type="button" data-test="email">测试</button>
         </div>
+        <div id="cc98-mail-state" class="cc98-setting-help" style="margin-top:10px">
+          ${mailEnabled
+            ? '邮箱通知已启用；今后新命中的帖子会按通知间隔合并发送。'
+            : '邮箱地址可以保存，但当前通知未启用。勾选“启用”并保存后，今后新命中的帖子才会发送；此前通知不会补发。'}
+        </div>
       </div>
     </div>
 
@@ -265,6 +271,18 @@ async function draw(body) {
     };
   }
 
+  function updateMailState(enabled) {
+    const state = body.querySelector('#cc98-mail-state');
+    if (!state) return;
+    state.textContent = enabled
+      ? '邮箱通知已启用；今后新命中的帖子会按通知间隔合并发送。'
+      : '邮箱地址可以保存，但当前通知未启用。勾选“启用”并保存后，今后新命中的帖子才会发送；此前通知不会补发。';
+  }
+
+  body.querySelector('#cc98-mail-en').addEventListener('change', (event) => {
+    updateMailState(event.target.checked);
+  });
+
   // 保存 / 测试
   body.querySelectorAll('[data-save], [data-test]').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -282,7 +300,12 @@ async function draw(body) {
           await saveChannel(cfg);
           // 记住共享间隔，供下次打开默认
           await setLocal(STORAGE_KEYS.NOTIFY_INTERVAL, cfg.notifyIntervalMinutes);
-          toast('已保存');
+          if (provider === 'email') {
+            updateMailState(cfg.enabled);
+            toast(cfg.enabled ? '邮箱通知已启用并保存' : '邮箱配置已保存，但通知未启用');
+          } else {
+            toast(cfg.enabled ? '钉钉通知已启用并保存' : '钉钉配置已保存，但通知未启用');
+          }
         }
       } catch (e) {
         toast(e.message || '操作失败');

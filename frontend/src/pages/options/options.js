@@ -160,6 +160,14 @@ function setChannelStatus(message, isError = false) {
   $('channelStatus').style.color = isError ? 'var(--err)' : 'var(--ok)';
 }
 
+function updateMailStateHint(enabled) {
+  const hint = $('mailStateHint');
+  hint.classList.toggle('enabled', enabled);
+  hint.textContent = enabled
+    ? '邮箱通知已启用；今后新命中的帖子会按通知间隔合并发送。'
+    : '邮箱地址可以保存，但当前通知未启用。勾选“启用”并保存后，今后新命中的帖子才会发送；此前通知不会补发。';
+}
+
 function setChannelControlsDisabled(disabled) {
   document.querySelectorAll('#notifyInterval, .channel input, [data-channel-save], [data-channel-test]')
     .forEach((element) => { element.disabled = disabled; });
@@ -206,7 +214,8 @@ async function loadNotificationSettings() {
     $('mailEnabled').checked = !!(mailChannel && mailChannel.enabled);
     $('mailTo').value = (mailChannel && mailChannel.config && mailChannel.config.to) || email;
     $('mailPrefix').value = (mailChannel && mailChannel.config && mailChannel.config.subject_prefix) || 'CC98 订阅提醒';
-    setChannelStatus('通知配置已加载');
+    updateMailStateHint($('mailEnabled').checked);
+    setChannelStatus('通知配置已加载；请确认需要的渠道已勾选“启用”');
   } catch (error) {
     setChannelStatus(error.message || '通知配置加载失败', true);
   }
@@ -250,7 +259,14 @@ async function handleChannelAction(button, test) {
       await chrome.storage.local.set({ [STORAGE_KEYS.NOTIFY_INTERVAL]: payload.notifyIntervalMinutes });
       await loadNotificationSettings();
     }
-    setChannelStatus(test ? '测试消息已发送' : '通知配置已保存');
+    if (test) {
+      setChannelStatus('测试消息已发送');
+    } else if (provider === 'email') {
+      updateMailStateHint(payload.enabled);
+      setChannelStatus(payload.enabled ? '邮箱通知已启用并保存' : '邮箱配置已保存，但通知未启用', !payload.enabled);
+    } else {
+      setChannelStatus(payload.enabled ? '钉钉通知已启用并保存' : '钉钉配置已保存，但通知未启用', !payload.enabled);
+    }
   } catch (error) {
     setChannelStatus(error.message || (test ? '测试失败' : '保存失败'), true);
   } finally {
@@ -267,5 +283,6 @@ $('reset').addEventListener('click', reset);
 document.querySelectorAll('[data-channel-save], [data-channel-test]').forEach((button) => {
   button.addEventListener('click', () => handleChannelAction(button, !!button.dataset.channelTest));
 });
+$('mailEnabled').addEventListener('change', (event) => updateMailStateHint(event.target.checked));
 
 load().catch((error) => setStatus(error.message || '设置加载失败', true));
