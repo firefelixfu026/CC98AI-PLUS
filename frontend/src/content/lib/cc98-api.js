@@ -176,22 +176,25 @@ export async function searchPosts(query, boardId = null, limit = 20, offset = 0,
 export async function getPostDetail(postId, opts = {}) {
   const pageSize = opts.pageSize || 10;
   const maxPages = opts.maxPages || null;
+  const skipTopicInfo = opts.skipTopicInfo === true;
   const auth = _ensureAuth();
-  const cacheKey = `${postId}|${pageSize}|${maxPages == null ? 'all' : maxPages}`;
+  const cacheKey = `${postId}|${pageSize}|${maxPages == null ? 'all' : maxPages}|${skipTopicInfo ? 'posts' : 'full'}`;
   const cached = _cacheGet(_topicCache, cacheKey, TOPIC_CACHE_TTL_MS);
   if (cached) return cached;
 
   let topicId = postId;
-  let topicInfo;
-  try {
-    topicInfo = await _limitedGetJson(`/topic/${topicId}`, null, auth, opts.requestBudget);
-  } catch (err) {
-    if (!err || err.status !== 404) throw err;
-    const basic = await _limitedGetJson('/post/basic', { id: postId }, auth, opts.requestBudget);
-    const bp = Array.isArray(basic) ? basic[0] : basic;
-    if (!bp || !bp.topicId) throw err;
-    topicId = bp.topicId;
-    topicInfo = await _limitedGetJson(`/topic/${topicId}`, null, auth, opts.requestBudget);
+  let topicInfo = null;
+  if (!skipTopicInfo) {
+    try {
+      topicInfo = await _limitedGetJson(`/topic/${topicId}`, null, auth, opts.requestBudget);
+    } catch (err) {
+      if (!err || err.status !== 404) throw err;
+      const basic = await _limitedGetJson('/post/basic', { id: postId }, auth, opts.requestBudget);
+      const bp = Array.isArray(basic) ? basic[0] : basic;
+      if (!bp || !bp.topicId) throw err;
+      topicId = bp.topicId;
+      topicInfo = await _limitedGetJson(`/topic/${topicId}`, null, auth, opts.requestBudget);
+    }
   }
 
   const isDict = topicInfo && typeof topicInfo === 'object' && !Array.isArray(topicInfo);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { hasRestrictedNotice } from '../src/content/lib/content-policy.js';
 import { createRequestBudget } from '../src/content/lib/request-budget.js';
-import { normalizeSearchBudget } from '../src/content/lib/storage.js';
+import { migrateSearchBudget, normalizeSearchBudget } from '../src/content/lib/storage.js';
 
 assert.equal(hasRestrictedNotice('楼主说明：请勿转载本文。'), true);
 assert.equal(hasRestrictedNotice('普通课程讨论内容'), false);
@@ -23,10 +23,15 @@ assert.deepEqual(
   {
     keywordCount: 4,
     searchLimitPerKeyword: 20,
-    topicLimit: 5,
+    topicLimit: 10,
     maxRepliesPerTopic: 20,
     maxCharsPerReply: 2000,
   }
+);
+
+assert.deepEqual(
+  migrateSearchBudget({ topicLimit: 5, maxRepliesPerTopic: 20 }),
+  { topicLimit: 8, maxRepliesPerTopic: 15, budgetVersion: 2 }
 );
 
 const token = `${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(40)}`;
@@ -65,7 +70,7 @@ globalThis.chrome = {
   },
 };
 
-const { searchPosts } = await import('../src/content/lib/cc98-api.js');
+const { getPostDetail, searchPosts } = await import('../src/content/lib/cc98-api.js');
 await assert.rejects(
   () => searchPosts('访问保护测试'),
   (error) => error.type === 'cc98_access_guard'
@@ -76,5 +81,9 @@ responseMode = 'success';
 await searchPosts('缓存测试');
 await searchPosts('缓存测试');
 assert.equal(fetchCount, 2, 'second identical search should use memory cache');
+
+const detailBudget = createRequestBudget(2);
+await getPostDetail(123, { maxPages: 1, skipTopicInfo: true, requestBudget: detailBudget });
+assert.equal(detailBudget.used, 1, 'search-result topics should read posts without refetching topic metadata');
 
 console.log('frontend safety limits passed');

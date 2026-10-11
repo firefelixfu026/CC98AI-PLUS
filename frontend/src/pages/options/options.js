@@ -2,7 +2,9 @@
 // 设置页：LLM 配置 + 搜索预算 + 订阅通知渠道
 // 扩展页拥有 host_permissions，可直接 fetch 跨域做连接测试
 // ============================================================
-import { LLM_DEFAULTS, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS } from '../../shared/constants.js';
+import {
+  LLM_DEFAULTS, STORAGE_KEYS, NOTIFY_INTERVAL_PRESETS, SEARCH_BUDGET_SCHEMA_VERSION,
+} from '../../shared/constants.js';
 import { startStoredThemePaletteSync } from '../../shared/theme-palette.js';
 import { listChannels, saveChannel, testChannel } from '../../content/lib/backend-api.js';
 import { getSearchBudget } from '../../content/lib/storage.js';
@@ -88,6 +90,7 @@ async function save() {
     maxTokens: Number($('maxTokens').value) || 0, // 空 / 非法 → 0 = 不限制
   };
   const budget = {
+    budgetVersion: SEARCH_BUDGET_SCHEMA_VERSION,
     keywordCount: Number($('keywordCount').value),
     searchLimitPerKeyword: Number($('searchLimitPerKeyword').value),
     topicLimit: Number($('topicLimit').value),

@@ -5,7 +5,8 @@
 // ============================================================
 import {
   STORAGE_KEYS, SESSION_KEYS, LLM_DEFAULTS, SEARCH_BUDGET_DEFAULTS,
-  SEARCH_BUDGET_LIMITS, BACKEND_DEFAULT_BASE, SUBSCRIPTION_LIMIT_FALLBACK,
+  SEARCH_BUDGET_LIMITS, SEARCH_BUDGET_SCHEMA_VERSION,
+  BACKEND_DEFAULT_BASE, SUBSCRIPTION_LIMIT_FALLBACK,
 } from '../../shared/constants.js';
 
 export async function getLocal(key) {
@@ -34,8 +35,23 @@ export async function getLLMConfig() {
 }
 
 export async function getSearchBudget() {
-  const saved = (await getLocal(STORAGE_KEYS.BUDGET)) || {};
+  const original = (await getLocal(STORAGE_KEYS.BUDGET)) || {};
+  const saved = migrateSearchBudget(original);
+  if (Object.keys(original).length && original.budgetVersion !== SEARCH_BUDGET_SCHEMA_VERSION) {
+    await setLocal(STORAGE_KEYS.BUDGET, saved);
+  }
   return normalizeSearchBudget({ ...SEARCH_BUDGET_DEFAULTS, ...saved });
+}
+
+export function migrateSearchBudget(saved) {
+  const migrated = { ...(saved || {}) };
+  if (migrated.budgetVersion === SEARCH_BUDGET_SCHEMA_VERSION) return migrated;
+
+  // 旧版的上限值就是默认值。升级后增加主题广度，并适度减少单帖深度。
+  if (Number(migrated.topicLimit) === 5) migrated.topicLimit = 8;
+  if (Number(migrated.maxRepliesPerTopic) === 20) migrated.maxRepliesPerTopic = 15;
+  migrated.budgetVersion = SEARCH_BUDGET_SCHEMA_VERSION;
+  return migrated;
 }
 
 export function normalizeSearchBudget(budget) {

@@ -10,13 +10,14 @@ export const SEARCH_COOLDOWN_MS = 45_000; // 两次完整搜索之间的冷却�
 export const SEARCH_REQUEST_LIMIT = 20;   // 一轮搜索最多访问 CC98 的次数
 export const SEARCH_CACHE_TTL_MS = 5 * 60_000;
 export const TOPIC_CACHE_TTL_MS = 10 * 60_000;
+export const SEARCH_BUDGET_SCHEMA_VERSION = 2;
 
 // 搜索预算默认值（可在设置页调）
 export const SEARCH_BUDGET_DEFAULTS = {
   keywordCount: 4,        // 拆分多少个搜索关键词
   searchLimitPerKeyword: 20, // 每个关键词最多搜多少条
-  topicLimit: 5,          // 最终选取多少个主题
-  maxRepliesPerTopic: 20, // 每个主题最多读多少楼
+  topicLimit: 8,          // 最终选取多少个主题
+  maxRepliesPerTopic: 15, // 每个主题最多读多少楼
   maxCharsPerReply: 1000, // 每楼最多截取多少字
 };
 
@@ -24,7 +25,7 @@ export const SEARCH_BUDGET_DEFAULTS = {
 export const SEARCH_BUDGET_LIMITS = {
   keywordCount: { min: 1, max: 4 },
   searchLimitPerKeyword: { min: 5, max: 20 },
-  topicLimit: { min: 3, max: 5 },
+  topicLimit: { min: 3, max: 10 },
   maxRepliesPerTopic: { min: 5, max: 20 },
   maxCharsPerReply: { min: 200, max: 2000 },
 };

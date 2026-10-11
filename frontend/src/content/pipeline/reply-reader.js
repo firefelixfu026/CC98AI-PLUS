@@ -18,6 +18,7 @@ export async function readReplies(topics, budget, onProgress, signal, requestBud
       const detail = await getPostDetail(t.id, {
         pageSize: 20,
         maxPages: Math.ceil(maxReplies / 20),
+        skipTopicInfo: true,
         requestBudget,
       });
       const posts = (detail.posts || []).slice(0, maxReplies);
