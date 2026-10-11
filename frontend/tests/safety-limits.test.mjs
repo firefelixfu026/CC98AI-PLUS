@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { hasRestrictedNotice } from '../src/content/lib/content-policy.js';
 import { createRequestBudget } from '../src/content/lib/request-budget.js';
 import { migrateSearchBudget, normalizeSearchBudget } from '../src/content/lib/storage.js';
+import { shouldPauseAfterTopic } from '../src/content/pipeline/reply-reader.js';
 
 assert.equal(hasRestrictedNotice('楼主说明：请勿转载本文。'), true);
 assert.equal(hasRestrictedNotice('普通课程讨论内容'), false);
@@ -23,7 +24,7 @@ assert.deepEqual(
   {
     keywordCount: 4,
     searchLimitPerKeyword: 20,
-    topicLimit: 10,
+    topicLimit: 20,
     maxRepliesPerTopic: 20,
     maxCharsPerReply: 2000,
   }
@@ -31,8 +32,15 @@ assert.deepEqual(
 
 assert.deepEqual(
   migrateSearchBudget({ topicLimit: 5, maxRepliesPerTopic: 20 }),
-  { topicLimit: 8, maxRepliesPerTopic: 15, budgetVersion: 2 }
+  { topicLimit: 12, maxRepliesPerTopic: 15, budgetVersion: 3 }
 );
+assert.deepEqual(
+  migrateSearchBudget({ topicLimit: 8, maxRepliesPerTopic: 15, budgetVersion: 2 }),
+  { topicLimit: 12, maxRepliesPerTopic: 15, budgetVersion: 3 }
+);
+assert.equal(shouldPauseAfterTopic(5, 20), true);
+assert.equal(shouldPauseAfterTopic(10, 20), true);
+assert.equal(shouldPauseAfterTopic(20, 20), false);
 
 const token = `${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(40)}`;
 globalThis.location = { hostname: 'www.cc98.org' };

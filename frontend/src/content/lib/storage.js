@@ -46,10 +46,16 @@ export async function getSearchBudget() {
 export function migrateSearchBudget(saved) {
   const migrated = { ...(saved || {}) };
   if (migrated.budgetVersion === SEARCH_BUDGET_SCHEMA_VERSION) return migrated;
+  const oldVersion = Number(migrated.budgetVersion) || 1;
 
-  // 旧版的上限值就是默认值。升级后增加主题广度，并适度减少单帖深度。
-  if (Number(migrated.topicLimit) === 5) migrated.topicLimit = 8;
-  if (Number(migrated.maxRepliesPerTopic) === 20) migrated.maxRepliesPerTopic = 15;
+  if (oldVersion < 2) {
+    // 0.1.6 的上限值就是默认值。升级后增加主题广度，并适度减少单帖深度。
+    if (Number(migrated.topicLimit) === 5) migrated.topicLimit = 8;
+    if (Number(migrated.maxRepliesPerTopic) === 20) migrated.maxRepliesPerTopic = 15;
+  }
+  if (oldVersion < 3 && Number(migrated.topicLimit) === 8) {
+    migrated.topicLimit = 12;
+  }
   migrated.budgetVersion = SEARCH_BUDGET_SCHEMA_VERSION;
   return migrated;
 }

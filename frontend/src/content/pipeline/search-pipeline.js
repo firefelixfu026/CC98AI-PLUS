@@ -45,9 +45,13 @@ export async function runSearchPipeline(query, onProgress, opts = {}) {
   const requestBudget = createRequestBudget();
   const report = { keywords: [], topics: [], summary: '' };
 
-  const emit = (key, fraction) => {
+  const emit = (key, fraction, labelOverride = '') => {
     const st = STAGES.find((s) => s.key === key);
-    if (onProgress) onProgress({ percent: percent(key, fraction), stageKey: key, stageLabel: st ? st.label : key });
+    if (onProgress) onProgress({
+      percent: percent(key, fraction),
+      stageKey: key,
+      stageLabel: labelOverride || (st ? st.label : key),
+    });
   };
 
   // 1. 关键词
@@ -79,8 +83,12 @@ export async function runSearchPipeline(query, onProgress, opts = {}) {
 
   // 3b. 读回复
   emit('read', 0);
-  const enriched = await readReplies(topTopics, budget, (done, total) => {
-    emit('read', total ? done / total : 0);
+  const enriched = await readReplies(topTopics, budget, (done, total, state = {}) => {
+    const pauseSeconds = Math.round((state.pauseMs || 0) / 1000);
+    const label = state.pausing
+      ? `已读取 ${done} 个主题，为减轻论坛负担休息 ${pauseSeconds} 秒`
+      : '阅读回复';
+    emit('read', total ? done / total : 0, label);
   }, signal, requestBudget);
   throwIfAborted(signal);
   emit('read', 1);

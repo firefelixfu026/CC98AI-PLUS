@@ -2,6 +2,7 @@
 // 错误分类 + 中文提示
 // 把底层抛出的各种异常，映射成用户能看懂的类型和操作建议
 // ============================================================
+import { SEARCH_REQUEST_LIMIT } from '../../shared/constants.js';
 
 export const ERROR_TYPES = {
   CC98_NOT_LOGGED_IN: 'cc98_not_logged_in',
@@ -97,7 +98,7 @@ function hintFor(type) {
     case ERROR_TYPES.CC98_ACCESS_GUARD:
       return '本轮搜索已立即停止，插件不会自动重试。请稍后再使用，并留意 CC98 页面或账号提示。';
     case ERROR_TYPES.SEARCH_REQUEST_LIMIT:
-      return '本轮搜索已达到 20 次 CC98 请求上限。请缩小问题范围，稍后重新搜索。';
+      return `本轮搜索已达到 ${SEARCH_REQUEST_LIMIT} 次 CC98 请求上限。请缩小问题范围，稍后重新搜索。`;
     case ERROR_TYPES.LLM_API_KEY_INVALID:
       return '请到插件设置页检查 API Key 和 Base URL。';
     case ERROR_TYPES.LLM_QUOTA_EXHAUSTED:

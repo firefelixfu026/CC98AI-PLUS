@@ -4,6 +4,19 @@
 import { getPostDetail } from '../lib/cc98-api.js';
 import { AppError, ERROR_TYPES } from '../lib/errors.js';
 import { hasRestrictedNotice } from '../lib/content-policy.js';
+import { TOPIC_READ_BATCH_PAUSE_MS, TOPIC_READ_BATCH_SIZE } from '../../shared/constants.js';
+
+export function shouldPauseAfterTopic(completed, total) {
+  return completed < total && completed % TOPIC_READ_BATCH_SIZE === 0;
+}
+
+async function waitForNextBatch(signal) {
+  const stepMs = 250;
+  for (let elapsed = 0; elapsed < TOPIC_READ_BATCH_PAUSE_MS; elapsed += stepMs) {
+    if (signal && signal.aborted) throw new AppError(ERROR_TYPES.ABORTED, '搜索已终止');
+    await new Promise((resolve) => setTimeout(resolve, Math.min(stepMs, TOPIC_READ_BATCH_PAUSE_MS - elapsed)));
+  }
+}
 
 export async function readReplies(topics, budget, onProgress, signal, requestBudget) {
   const maxReplies = budget.maxRepliesPerTopic || 30;
@@ -47,7 +60,16 @@ export async function readReplies(topics, budget, onProgress, signal, requestBud
       // 单个主题读取失败不致命，保留主题但不带回复
       enriched.push({ ...t, replies: [], reply_count: 0, url: t.url, readError: e && e.message });
     }
-    if (onProgress) onProgress(i + 1, topics.length);
+    const completed = i + 1;
+    const pausing = shouldPauseAfterTopic(completed, topics.length);
+    if (onProgress) onProgress(completed, topics.length, {
+      pausing,
+      pauseMs: pausing ? TOPIC_READ_BATCH_PAUSE_MS : 0,
+    });
+    if (pausing) {
+      await waitForNextBatch(signal);
+      if (onProgress) onProgress(completed, topics.length, { pausing: false, pauseMs: 0 });
+    }
   }
 
   return enriched;
