@@ -137,6 +137,7 @@ const CSS = `
 .cc98-textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--cc98-bd);border-radius:var(--cc98-rad-sm);font-size:13px;font-family:inherit;color:var(--cc98-txt);outline:none;background:var(--cc98-bg);resize:vertical;min-height:56px;transition:border-color .15s}
 .cc98-textarea:focus{border-color:var(--cc98-pri);box-shadow:0 0 0 3px color-mix(in srgb, var(--cc98-pri) 16%, transparent)}
 .cc98-btn-primary,.cc98-primary,.cc98-secondary{border:none;border-radius:var(--cc98-rad-sm);padding:10px 15px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,transform .1s}
+.cc98-full-page-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 .cc98-btn-primary:active:not(:disabled),.cc98-primary:active:not(:disabled),.cc98-secondary:active:not(:disabled){transform:translateY(1px)}
 .cc98-btn-primary,.cc98-primary{background:var(--cc98-pri-fill);color:var(--cc98-on-pri)}
 .cc98-btn-primary:hover:not(:disabled),.cc98-primary:hover:not(:disabled){background:var(--cc98-pri-fill-h)}

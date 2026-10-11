@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import { hasRestrictedNotice } from '../src/content/lib/content-policy.js';
 import { createRequestBudget } from '../src/content/lib/request-budget.js';
@@ -41,6 +42,20 @@ assert.deepEqual(
 assert.equal(shouldPauseAfterTopic(5, 20), true);
 assert.equal(shouldPauseAfterTopic(10, 20), true);
 assert.equal(shouldPauseAfterTopic(20, 20), false);
+
+const manifest = JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+assert.equal(manifest.version, '0.1.10');
+assert.ok(
+  manifest.web_accessible_resources.some((entry) => entry.resources.includes('src/pages/search/search.html')),
+  'the full search page must be directly openable from the CC98 content page'
+);
+const searchPanelSource = fs.readFileSync(
+  new URL('../src/content/ui/search-panel.js', import.meta.url),
+  'utf8'
+);
+assert.match(searchPanelSource, /<a class="cc98-secondary cc98-full-page-link"/);
+assert.match(searchPanelSource, /target="_blank"/);
+assert.doesNotMatch(searchPanelSource, /OPEN_SEARCH|sendMessage/);
 
 const token = `${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(40)}`;
 globalThis.location = { hostname: 'www.cc98.org' };

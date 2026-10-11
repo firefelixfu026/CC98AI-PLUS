@@ -13,7 +13,6 @@ import {
   publishError, publishCancelled, clearSearchState, isStale, claimSearchSlot, STALE_MS,
 } from '../lib/search-state.js';
 import { ERROR_TYPES } from '../lib/errors.js';
-import { MSG } from '../../shared/constants.js';
 
 // 本标签页是否是发起方（只有发起方跑管线、写进度）
 let isOwner = false;
@@ -53,19 +52,12 @@ const CANCELLED_HTML = `
     <div class="cc98-empty-sub">你中断了这次搜索，可以改个话题重新搜。</div>
   </div>`;
 
-async function openFullSearch() {
-  try {
-    const response = await chrome.runtime.sendMessage({ type: MSG.OPEN_SEARCH });
-    if (!response || !response.ok) throw new Error(response && response.error);
-  } catch (error) {
-    console.error('[CC98 AI+] 打开完整搜索页失败：', error);
-  }
-}
-
 export function renderSearchPanel(body, options = {}) {
+  const fullSearchUrl = chrome.runtime.getURL('src/pages/search/search.html');
   const fullPageButton = options.fullPage
     ? ''
-    : '<button id="cc98-search-full" class="cc98-secondary" type="button">完整搜索页</button>';
+    : `<a class="cc98-secondary cc98-full-page-link" href="${fullSearchUrl}"
+          target="_blank" rel="noopener">完整搜索页</a>`;
   body.innerHTML = `
     <div class="cc98-form-row">
       <input id="cc98-search-input" class="cc98-input" type="text"
@@ -88,9 +80,6 @@ export function renderSearchPanel(body, options = {}) {
   const meta = body.querySelector('#cc98-search-meta');
   const metaText = body.querySelector('#cc98-search-meta-text');
   const clearBtn = body.querySelector('#cc98-search-clear');
-  const fullPageBtn = body.querySelector('#cc98-search-full');
-
-  if (fullPageBtn) fullPageBtn.addEventListener('click', () => { void openFullSearch(); });
 
   // 镜像进度条：非发起方也要有一个，用来跟着画进度
   let bar = null;
