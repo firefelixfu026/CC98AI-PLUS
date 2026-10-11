@@ -38,7 +38,8 @@
     .row .v { font-weight:600; }
     .row .v.ok { color:var(--ok); }
     .row .v.no { color:var(--warn); }
-    .btns { display:flex; gap:8px; margin-top:14px; }
+    .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+    .btns .wide { grid-column:1 / -1; }
     button { flex:1; border:none; border-radius:9px; padding:10px 0; font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s, border-color .15s, transform .1s; }
     button:active { transform:translateY(1px); }
     .primary { background:var(--pri-fill); color:var(--on-pri); }
@@ -75,7 +76,8 @@
       <span class="v" id="token">—</span>
     </div>
     <div class="btns">
-      <button class="primary" id="openCC98" type="button">打开 CC98</button>
+      <button class="primary wide" id="openSearch" type="button">打开完整搜索页</button>
+      <button class="ghost" id="openCC98" type="button">打开 CC98</button>
       <button class="ghost" id="openSettings" type="button">设置</button>
     </div>
     <div class="tip">在 CC98 页面上按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> 打开 AI 搜索，<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> 打开通知。</div>

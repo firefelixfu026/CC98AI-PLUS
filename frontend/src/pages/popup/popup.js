@@ -21,6 +21,7 @@ async function init() {
   tokenEl.className = 'v ' + (token ? 'ok' : 'no');
 
   $('openCC98').addEventListener('click', () => chrome.tabs.create({ url: 'https://www.cc98.org' }));
+  $('openSearch').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/search/search.html') }));
   $('openSettings').addEventListener('click', () => chrome.runtime.openOptionsPage());
 }
 

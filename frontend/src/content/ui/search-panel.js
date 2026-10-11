@@ -13,6 +13,7 @@ import {
   publishError, publishCancelled, clearSearchState, isStale, claimSearchSlot, STALE_MS,
 } from '../lib/search-state.js';
 import { ERROR_TYPES } from '../lib/errors.js';
+import { MSG } from '../../shared/constants.js';
 
 // 本标签页是否是发起方（只有发起方跑管线、写进度）
 let isOwner = false;
@@ -52,13 +53,26 @@ const CANCELLED_HTML = `
     <div class="cc98-empty-sub">你中断了这次搜索，可以改个话题重新搜。</div>
   </div>`;
 
-export function renderSearchPanel(body) {
+async function openFullSearch() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: MSG.OPEN_SEARCH });
+    if (!response || !response.ok) throw new Error(response && response.error);
+  } catch (error) {
+    console.error('[CC98 AI+] 打开完整搜索页失败：', error);
+  }
+}
+
+export function renderSearchPanel(body, options = {}) {
+  const fullPageButton = options.fullPage
+    ? ''
+    : '<button id="cc98-search-full" class="cc98-secondary" type="button">完整搜索页</button>';
   body.innerHTML = `
     <div class="cc98-form-row">
       <input id="cc98-search-input" class="cc98-input" type="text"
              placeholder="输入想了解的话题，如：竺院 保研" />
       <button id="cc98-search-btn" class="cc98-btn-primary" type="button">搜索</button>
       <button id="cc98-search-stop" class="cc98-secondary" type="button" hidden>停止</button>
+      ${fullPageButton}
     </div>
     <div class="cc98-result-meta">用于总结的帖子正文和回复会发送到你在设置中选择的 AI 服务商；含禁止转载或外传声明的内容会被过滤。</div>
     <div id="cc98-search-meta" class="cc98-result-meta" hidden>
@@ -74,6 +88,9 @@ export function renderSearchPanel(body) {
   const meta = body.querySelector('#cc98-search-meta');
   const metaText = body.querySelector('#cc98-search-meta-text');
   const clearBtn = body.querySelector('#cc98-search-clear');
+  const fullPageBtn = body.querySelector('#cc98-search-full');
+
+  if (fullPageBtn) fullPageBtn.addEventListener('click', () => { void openFullSearch(); });
 
   // 镜像进度条：非发起方也要有一个，用来跟着画进度
   let bar = null;

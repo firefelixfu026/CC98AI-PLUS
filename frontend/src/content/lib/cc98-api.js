@@ -5,6 +5,7 @@
 // ============================================================
 import { fetchProxy } from './net.js';
 import { getAuth, isTokenExpired } from './token-extractor.js';
+import { getCC98Auth } from './storage.js';
 import { AppError, ERROR_TYPES } from './errors.js';
 import { isWebVPN, getApiBase, getWebBase } from './webvpn.js';
 import {
@@ -31,8 +32,11 @@ function _withRateLimit(fn) {
   return run;
 }
 
-function _ensureAuth() {
-  const auth = getAuth();
+async function _ensureAuth() {
+  // 在 CC98 内容页优先读取当前登录态；独立搜索页没有站点 localStorage，
+  // 因此回退到内容脚本写入 chrome.storage.session 的临时凭证。
+  const isExtensionPage = typeof location !== 'undefined' && location.protocol === 'chrome-extension:';
+  const auth = (isExtensionPage ? null : getAuth()) || await getCC98Auth();
   if (!auth) {
     throw new AppError(ERROR_TYPES.CC98_NOT_LOGGED_IN, '未检测到 CC98 登录凭证，请先在 cc98.org 登录');
   }
@@ -135,7 +139,7 @@ function _limitedGetJson(path, params, auth, requestBudget) {
 export async function searchPosts(query, boardId = null, limit = 20, offset = 0, opts = {}) {
   const q = (query || '').trim();
   if (!q) throw new Error('query must not be empty');
-  const auth = _ensureAuth();
+  const auth = await _ensureAuth();
   const cacheKey = `${boardId || 0}|${q}|${limit}|${offset}`;
   const cached = _cacheGet(_searchCache, cacheKey, SEARCH_CACHE_TTL_MS);
   if (cached) return cached;
@@ -177,7 +181,7 @@ export async function getPostDetail(postId, opts = {}) {
   const pageSize = opts.pageSize || 10;
   const maxPages = opts.maxPages || null;
   const skipTopicInfo = opts.skipTopicInfo === true;
-  const auth = _ensureAuth();
+  const auth = await _ensureAuth();
   const cacheKey = `${postId}|${pageSize}|${maxPages == null ? 'all' : maxPages}|${skipTopicInfo ? 'posts' : 'full'}`;
   const cached = _cacheGet(_topicCache, cacheKey, TOPIC_CACHE_TTL_MS);
   if (cached) return cached;

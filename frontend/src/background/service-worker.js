@@ -44,6 +44,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: e && e.message ? e.message : String(e) }));
     return true;
   }
+  if (msg && msg.type === MSG.OPEN_SEARCH) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/search/search.html') })
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e && e.message ? e.message : String(e) }));
+    return true;
+  }
   return false;
 });
 

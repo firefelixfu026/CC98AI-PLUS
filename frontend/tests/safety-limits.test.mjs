@@ -63,6 +63,9 @@ globalThis.chrome = {
       async set() {},
     },
     session: {
+      async get() {
+        return { cc98Token: token, cc98AuthType: 'bearer' };
+      },
       async set() {},
       async remove() {},
     },
@@ -93,5 +96,11 @@ assert.equal(fetchCount, 2, 'second identical search should use memory cache');
 const detailBudget = createRequestBudget(2);
 await getPostDetail(123, { maxPages: 1, skipTopicInfo: true, requestBudget: detailBudget });
 assert.equal(detailBudget.used, 1, 'search-result topics should read posts without refetching topic metadata');
+
+globalThis.location = { hostname: 'test-extension', protocol: 'chrome-extension:' };
+globalThis.localStorage = { length: 0, getItem() { return null; }, key() { return null; } };
+const extensionPageFetches = fetchCount;
+await searchPosts('完整搜索页凭证测试');
+assert.equal(fetchCount, extensionPageFetches + 1, 'full search page should reuse the session token');
 
 console.log('frontend safety limits passed');
