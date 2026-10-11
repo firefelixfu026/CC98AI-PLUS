@@ -82,17 +82,16 @@ async function boot() {
     refreshAuth();
   } catch (e) { /* ignore */ }
 
-  // 快捷键：Ctrl+Shift+K 搜索，Ctrl+Shift+N 通知（只挂一次）
+  // 快捷键：Ctrl+Shift+K 搜索，Alt+Shift+N 通知（只挂一次）
   document.addEventListener('keydown', (e) => {
-    if (!e.ctrlKey || !e.shiftKey || e.altKey || e.metaKey) return;
     const k = (e.key || '').toLowerCase();
     const p = getSidePanel();
     if (!p) return;
-    if (k === 'k') {
+    if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && k === 'k') {
       e.preventDefault();
       p.open();
       p.setActiveTab('search');
-    } else if (k === 'n') {
+    } else if (!e.ctrlKey && e.shiftKey && e.altKey && !e.metaKey && k === 'n') {
       e.preventDefault();
       p.open();
       p.setActiveTab('notif');
