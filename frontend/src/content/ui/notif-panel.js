@@ -3,7 +3,7 @@
 // ============================================================
 import { listNotifications } from '../lib/backend-api.js';
 import { getEmail, isLoggedIn } from '../lib/auth.js';
-import { STORAGE_KEYS } from '../../shared/constants.js';
+import { MSG, STORAGE_KEYS } from '../../shared/constants.js';
 import { updateBadge } from './floating-btn.js';
 import { esc, toast, fmtTime, deliveryStatusText, deliveryStatusColor } from '../lib/html-utils.js';
 
@@ -46,6 +46,28 @@ async function writeCache(items) {
   });
 }
 
+async function readLastSeenNotificationId() {
+  const email = await getEmail();
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.LAST_SEEN_NOTIFICATION);
+  const value = stored && stored[STORAGE_KEYS.LAST_SEEN_NOTIFICATION];
+  if (!value || value.email !== email) return 0;
+  return Number(value.id) || 0;
+}
+
+async function markNotificationsSeen(list) {
+  const latestId = list.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+  if (latestId > 0) {
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.LAST_SEEN_NOTIFICATION]: {
+        email: await getEmail(),
+        id: latestId,
+      },
+    });
+  }
+  updateBadge(0);
+  chrome.runtime.sendMessage({ type: MSG.CLEAR_NOTIFICATION_BADGE }).catch(() => {});
+}
+
 async function loadNotifications(force) {
   const cache = await readCache();
   const fresh = cache && Date.now() - Number(cache.fetchedAt || 0) < CACHE_TTL_MS;
@@ -65,7 +87,10 @@ async function loadNotifications(force) {
 async function refresh(body, force) {
   const result = await loadNotifications(force);
   const list = result.list;
-  updateBadge(list.filter((n) => !n.is_read).length);
+  const lastSeenId = await readLastSeenNotificationId();
+  const unseenIds = new Set(
+    list.filter((item) => (Number(item.id) || 0) > lastSeenId).map((item) => String(item.id))
+  );
 
   body.innerHTML = `
     <div class="cc98-panel-actions">
@@ -80,7 +105,7 @@ async function refresh(body, force) {
   } else {
     listEl.innerHTML = list
       .map((n) => `
-        <div class="cc98-notif">
+        <div class="cc98-notif${unseenIds.has(String(n.id)) ? ' unread' : ''}">
           <div class="nt">
             <a href="${esc(n.topic_url || '#')}" target="_blank" rel="noopener">${esc(n.topic_title || '(无标题)')}</a>
           </div>
@@ -92,6 +117,8 @@ async function refresh(body, force) {
         </div>`)
       .join('');
   }
+
+  await markNotificationsSeen(list);
 
   const refreshBtn = body.querySelector('#cc98-refresh-notif');
   refreshBtn.addEventListener('click', async () => {

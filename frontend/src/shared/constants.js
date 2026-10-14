@@ -69,6 +69,7 @@ export const STORAGE_KEYS = {
   LAST_SEARCH_STARTED_AT: 'lastSearchStartedAt',
   NOTIFY_INTERVAL: 'notifyIntervalMinutes',
   NOTIFICATION_CACHE: 'notificationListCache',
+  LAST_SEEN_NOTIFICATION: 'lastSeenNotification',
   THEME_PALETTE: 'cc98ThemePalette',
 };
 
@@ -81,7 +82,7 @@ export const SESSION_KEYS = {
 // 后台 Service Worker ↔ 内容脚本 消息类型
 export const MSG = {
   FETCH: 'FETCH',                 // 通用网络代理
-  REFRESH_BADGE: 'REFRESH_BADGE', // 刷新未读徽章
+  CLEAR_NOTIFICATION_BADGE: 'CLEAR_NOTIFICATION_BADGE',
   OPEN_OPTIONS: 'OPEN_OPTIONS',   // 由后台打开完整设置页
   OPEN_SEARCH: 'OPEN_SEARCH',     // 由后台打开完整搜索页
 };

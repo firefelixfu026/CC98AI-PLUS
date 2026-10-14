@@ -1,10 +1,10 @@
 // ============================================================
-// 后台 Service Worker：通用 fetch 代理 + 未读徽章轮询
+// 后台 Service Worker：通用 fetch 代理 + 扩展页面跳转
 //   所有跨域请求（CC98 API / LLM / 订阅服务）经这里转发，绕过 CORS
 // ============================================================
-import { MSG, STORAGE_KEYS, BACKEND_DEFAULT_BASE } from '../shared/constants.js';
+import { MSG } from '../shared/constants.js';
 
-const BADGE_ALARM = 'badge-poll';
+const LEGACY_BADGE_ALARM = 'badge-poll';
 
 // chrome.storage.session 默认只对「可信上下文」开放（不含内容脚本），
 // 必须显式放开，否则内容脚本读写 CC98 凭证会被拒绝。
@@ -18,16 +18,25 @@ function allowSessionStorageInContentScripts() {
 
 allowSessionStorageInContentScripts();
 
-// ---------- 安装 / 启动：建立徽章轮询 ----------
+function clearLegacyBadgePolling() {
+  chrome.alarms.clear(LEGACY_BADGE_ALARM).catch(() => {});
+  chrome.action.setBadgeText({ text: '' });
+}
+
+// 旧版会每 5 分钟查询一次通知，并把缺少 is_read 的记录全部算作未读。
+// 后端现已移除 is_read，加载新版时立即清理旧 alarm 和错误徽章。
+clearLegacyBadgePolling();
+
+// ---------- 安装 / 启动 ----------
 chrome.runtime.onInstalled.addListener(() => {
   allowSessionStorageInContentScripts();
-  chrome.alarms.create(BADGE_ALARM, { periodInMinutes: 5 });
+  clearLegacyBadgePolling();
   chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   allowSessionStorageInContentScripts();
-  chrome.alarms.create(BADGE_ALARM, { periodInMinutes: 5 });
+  clearLegacyBadgePolling();
 });
 
 // ---------- 消息：通用 fetch 代理 ----------
@@ -58,6 +67,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     );
     return true;
   }
+  if (msg && msg.type === MSG.CLEAR_NOTIFICATION_BADGE) {
+    chrome.action.setBadgeText({ text: '' });
+    sendResponse({ ok: true });
+    return false;
+  }
   return false;
 });
 
@@ -79,34 +93,5 @@ async function handleFetch(url, options = {}) {
     return { ok: res.ok, status: res.status, data };
   } catch (e) {
     return { ok: false, status: 0, data: { detail: e && e.message ? e.message : String(e) } };
-  }
-}
-
-// ---------- 徽章轮询：查询未读通知数 ----------
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === BADGE_ALARM) refreshBadge();
-});
-
-async function refreshBadge() {
-  const stored = await chrome.storage.local.get([STORAGE_KEYS.USER_EMAIL, STORAGE_KEYS.AUTH_TOKEN]);
-  const email = stored[STORAGE_KEYS.USER_EMAIL];
-  const token = stored[STORAGE_KEYS.AUTH_TOKEN];
-  const base = BACKEND_DEFAULT_BASE.replace(/\/+$/, '');
-
-  if (!email || !token) {
-    chrome.action.setBadgeText({ text: '' });
-    return;
-  }
-
-  try {
-    const res = await fetch(`${base}/api/v1/notifications?user_id=${encodeURIComponent(email)}`, {
-      headers: { Authorization: 'Bearer ' + token },
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const list = await res.json();
-    const unread = Array.isArray(list) ? list.filter((n) => !n.is_read).length : 0;
-    chrome.action.setBadgeText({ text: unread ? String(Math.min(unread, 99)) : '' });
-  } catch (e) {
-    chrome.action.setBadgeText({ text: '' });
   }
 }

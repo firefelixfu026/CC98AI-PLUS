@@ -11,6 +11,7 @@ test('OPEN_SEARCH creates the internal search tab and responds', async () => {
       setBadgeText() {},
     },
     alarms: {
+      clear() { return Promise.resolve(true); },
       create() {},
       onAlarm: { addListener() {} },
     },

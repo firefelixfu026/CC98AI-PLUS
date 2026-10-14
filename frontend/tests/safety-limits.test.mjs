@@ -44,7 +44,7 @@ assert.equal(shouldPauseAfterTopic(10, 20), true);
 assert.equal(shouldPauseAfterTopic(20, 20), false);
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
-assert.equal(manifest.version, '0.1.11');
+assert.equal(manifest.version, '0.1.12');
 assert.equal(
   manifest.web_accessible_resources.some((entry) => entry.resources.includes('src/pages/search/search.html')),
   false,
@@ -73,6 +73,8 @@ assert.match(settingsPanelSource, /邮箱配置已保存，但通知未启用/);
 assert.match(optionsSource, /此前通知不会补发/);
 assert.match(serviceWorkerSource, /chrome\.tabs\.create\(/);
 assert.match(serviceWorkerSource, /chrome\.runtime\.lastError/);
+assert.doesNotMatch(serviceWorkerSource, /filter\(\(n\) => !n\.is_read\)/);
+assert.match(serviceWorkerSource, /clearLegacyBadgePolling/);
 
 const token = `${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(40)}`;
 globalThis.location = { hostname: 'www.cc98.org' };
